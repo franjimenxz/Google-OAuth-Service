@@ -45,7 +45,7 @@ public class AuthController {
 
             // Define the redirect URI used in the frontend for the authorization code flow
             // This MUST match the Authorized Redirect URI configured in Google Cloud Console
-            String redirectUri = "https://5395b45c15ea.ngrok-free.app/api/auth/google/callback";
+            String redirectUri = "http://localhost:8080/api/auth/google/callback";
 
             // Exchange authorization code for tokens
             TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(request.getCode(), redirectUri);
@@ -119,7 +119,7 @@ public class AuthController {
             logger.info(" Código de autorización encontrado en cookie");
             
             // Usar el endpoint existente para procesar el código
-            String redirectUri = "https://5395b45c15ea.ngrok-free.app/api/auth/google/callback";
+            String redirectUri = "http://localhost:8080/api/auth/google/callback";
             TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(authCode, redirectUri);
             
             String idTokenString = tokenResponse.get("id_token").toString();
@@ -191,7 +191,7 @@ public class AuthController {
             logger.info(" Callback recibido - Procesando directamente con máxima seguridad");
             
             // OPCIÓN A: Procesar TODO aquí (sin endpoint adicional)
-            String redirectUri = "https://5395b45c15ea.ngrok-free.app/api/auth/google/callback";
+            String redirectUri = "http://localhost:8080/api/auth/google/callback";
             logger.info(" Usando redirect_uri: " + redirectUri);
             TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(code, redirectUri);
             
