@@ -3,4 +3,5 @@
 /Users/francojimenez/Desktop/Java/SpringBootGoogleAuth/src/main/java/com/example/auth/dto/AuthResponse.java
 /Users/francojimenez/Desktop/Java/SpringBootGoogleAuth/src/main/java/com/example/auth/controller/AuthController.java
 /Users/francojimenez/Desktop/Java/SpringBootGoogleAuth/src/main/java/com/example/auth/service/GoogleAuthService.java
+/Users/francojimenez/Desktop/Java/SpringBootGoogleAuth/src/main/java/com/example/auth/config/CorsConfig.java
 /Users/francojimenez/Desktop/Java/SpringBootGoogleAuth/src/main/java/com/example/auth/dto/GoogleAuthRequest.java

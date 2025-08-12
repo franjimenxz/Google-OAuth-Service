@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OAuth con PKCE - Máxima Seguridad</title>
+</head>
+<body>
+    <h1>OAuth 2.0 con PKCE (Proof Key for Code Exchange)</h1>
+    <button onclick="initiateGoogleAuthWithPKCE()">🔐 Login Seguro con PKCE</button>
+    <div id="result"></div>
+
+    <script>
+        // Generar code_verifier y code_challenge
+        function generateCodeVerifier() {
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            return btoa(String.fromCharCode.apply(null, array))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+        }
+
+        async function generateCodeChallenge(verifier) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(verifier);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            return btoa(String.fromCharCode.apply(null, new Uint8Array(digest)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+        }
+
+        async function initiateGoogleAuthWithPKCE() {
+            // 1. Generar PKCE parameters
+            const codeVerifier = generateCodeVerifier();
+            const codeChallenge = await generateCodeChallenge(codeVerifier);
+            
+            // Guardar code_verifier para usar después
+            sessionStorage.setItem('code_verifier', codeVerifier);
+            
+            // 2. Construir URL de OAuth con PKCE
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=209813369626-29rh4hsrn1t36e2014f7oqnfecjrat54.apps.googleusercontent.com&` +
+                `redirect_uri=${encodeURIComponent('http://localhost:8080/api/auth/google/callback')}&` +
+                `response_type=code&` +
+                `scope=${encodeURIComponent('openid email profile')}&` +
+                `code_challenge=${codeChallenge}&` +
+                `code_challenge_method=S256&` +
+                `state=${Math.random().toString(36).substring(7)}`;
+            
+            console.log('🔐 Iniciando OAuth con PKCE');
+            console.log('Code Challenge:', codeChallenge);
+            
+            // 3. Abrir popup
+            const popup = window.open(authUrl, 'googleAuth', 'width=500,height=600');
+            
+            document.getElementById('result').innerHTML = '<p>🔄 Autenticando con PKCE...</p>';
+        }
+
+        // Escuchar el código del callback
+        window.addEventListener('message', function(event) {
+            // Validar origen por seguridad
+            if (event.origin !== 'http://localhost:8080') {
+                console.warn('❌ Mensaje de origen no confiable:', event.origin);
+                return;
+            }
+            
+            if (event.data && event.data.code) {
+                const code = event.data.code;
+                const codeVerifier = sessionStorage.getItem('code_verifier');
+                
+                if (!codeVerifier) {
+                    console.error('❌ Code verifier no encontrado');
+                    return;
+                }
+                
+                console.log('✅ Código recibido de origen confiable');
+                
+                // Enviar code + code_verifier al backend
+                fetch('http://localhost:8080/api/auth/google', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        codeVerifier: codeVerifier  // Para validación adicional
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ Autenticación exitosa:', data);
+                    document.getElementById('result').innerHTML = 
+                        `<div style="color: green;">
+                            <h3>✅ Autenticación PKCE exitosa</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>`;
+                    
+                    // Limpiar code_verifier
+                    sessionStorage.removeItem('code_verifier');
+                })
+                .catch(error => {
+                    console.error('❌ Error:', error);
+                    document.getElementById('result').innerHTML = 
+                        `<div style="color: red;">❌ Error: ${error.message}</div>`;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

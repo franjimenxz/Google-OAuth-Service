@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google OAuth</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        button { background: #4285f4; color: white; border: none; padding: 15px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #3367d6; }
+        .result { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; }
+        .error { background: #ffe6e6; border-left: 4px solid #ff4444; }
+        .success { background: #e6ffe6; border-left: 4px solid #44ff44; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Test Google OAuth</h1>
+    <p>Prueba la autenticación con Google usando tu backend Spring Boot.</p>
+    
+    <button onclick="startGoogleAuth()">Iniciar sesión con Google</button>
+    
+    <div id="result"></div>
+
+    <script>
+        function startGoogleAuth() {
+            const clientId = '209813369626-29rh4hsrn1t36e2014f7oqnfecjrat54.apps.googleusercontent.com';
+            const redirectUri = 'https://5395b45c15ea.ngrok-free.app/api/auth/google/callback';
+            const scope = 'openid email profile https://www.googleapis.com/auth/calendar.readonly';
+            
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${clientId}&` +
+                `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                `response_type=code&` +
+                `scope=${encodeURIComponent(scope)}&` +
+                `access_type=offline&` +
+                `prompt=consent`;
+            
+            console.log('🔄 Redirigiendo a:', authUrl);
+            
+            // Abrir popup
+            const popup = window.open(authUrl, 'googleAuth', 'width=500,height=600');
+            
+            document.getElementById('result').innerHTML = 
+                '<div class="result">🔄 Abriendo ventana de Google...</div>';
+        }
+
+        // Escuchar respuesta del popup
+        window.addEventListener('message', function(event) {
+            console.log('📨 Mensaje recibido:', event.data);
+            
+            if (event.data.success) {
+                document.getElementById('result').innerHTML = 
+                    `<div class="result success">
+                        <h3>✅ Autenticación exitosa!</h3>
+                        <p><strong>Usuario:</strong> ${event.data.user.name}</p>
+                        <p><strong>Email:</strong> ${event.data.user.email}</p>
+                        <p><strong>Verificado:</strong> ${event.data.user.emailVerified ? '✅' : '❌'}</p>
+                        <img src="${event.data.user.picture}" style="border-radius: 50%; width: 50px; height: 50px;">
+                        <details>
+                            <summary>Ver datos completos</summary>
+                            <pre>${JSON.stringify(event.data, null, 2)}</pre>
+                        </details>
+                    </div>`;
+            } else {
+                document.getElementById('result').innerHTML = 
+                    `<div class="result error">
+                        <h3>❌ Error de autenticación</h3>
+                        <p><strong>Error:</strong> ${event.data.error || event.data.message}</p>
+                        ${event.data.details ? `<p><strong>Detalles:</strong> ${event.data.details}</p>` : ''}
+                    </div>`;
+            }
+        });
+    </script>
+</body>
+</html>

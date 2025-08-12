@@ -3,31 +3,32 @@ package com.example.auth.dto;
 import jakarta.validation.constraints.NotBlank;
 
 public class GoogleAuthRequest {
-    
-    @NotBlank(message = "El token de Google es requerido")
-    private String token;
 
-    
+    @NotBlank(message = "El código de autorización de Google es requerido")
+    private String code;
+
+
     public GoogleAuthRequest() {}
 
-    
-    public GoogleAuthRequest(String token) {
-        this.token = token;
+
+    public GoogleAuthRequest(String code) {
+        this.code = code;
     }
 
-    
-    public String getToken() {
-        return token;
+
+    public String getCode() {
+        return code;
     }
 
-    public void setToken(String token) {
-        this.token = token;
+    public void setCode(String code) {
+        this.code = code;
     }
 
     @Override
     public String toString() {
         return "GoogleAuthRequest{" +
-                "token='" + token + '\'' +
+                "code='" + code + '\'' +
                 '}';
     }
 }
+
