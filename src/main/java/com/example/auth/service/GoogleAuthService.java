@@ -213,10 +213,11 @@ public class GoogleAuthService {
                 .setApplicationName("Google Auth API")
                 .build();
 
-            // Get all files and folders
+            // Get all files and folders (excluding trashed items)
             com.google.api.services.drive.model.FileList result = service.files()
                 .list()
                 .setPageSize(100) // Aumentamos para obtener más items
+                .setQ("trashed=false") // Excluir archivos borrados
                 .setFields("nextPageToken, files(id, name, mimeType, modifiedTime, size, parents)")
                 .execute();
 
