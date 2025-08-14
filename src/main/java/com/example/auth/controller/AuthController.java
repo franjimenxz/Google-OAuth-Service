@@ -18,7 +18,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.auth.dto.AuthResponse;
+import com.example.auth.dto.CalendarEventDto;
+import com.example.auth.dto.DriveFileDto;
 import com.example.auth.dto.GoogleAuthRequest;
+import com.example.auth.dto.TaskDto;
 import com.example.auth.model.User;
 import com.example.auth.service.GoogleAuthService;
 import com.google.api.client.auth.oauth2.TokenResponse;
@@ -179,41 +182,40 @@ public class AuthController {
             if (accessToken == null) {
                 logger.warning("Access Token no encontrado para el usuario: " + userEmail);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new Object() {
-                        public final boolean success = false;
-                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
-                        public final String user = userEmail;
-                    });
+                        .body(new Object() {
+                            public final boolean success = false;
+                            public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
+                            public final String user = userEmail;
+                        });
             }
 
             logger.info("Obteniendo eventos del calendario para: " + userEmail);
-            List<String> events = googleAuthService.listCalendarEvents(accessToken);
-            
+            List<CalendarEventDto> events = googleAuthService.listCalendarEvents(accessToken);
+
             final String email = userEmail;
-            final List<String> calendarEvents = events;
             final int count = events.size();
-            
+
             Object response = new Object() {
                 public final boolean success = true;
                 public final String message = "Eventos del calendario obtenidos exitosamente";
                 public final String userEmail = email;
                 public final int eventCount = count;
-                public final List<String> events = calendarEvents;
+                public final List<CalendarEventDto> eventsList = events;
                 public final long timestamp = System.currentTimeMillis();
                 public final String note = "Mostrando próximos " + count + " eventos";
             };
-            
-            return ResponseEntity.ok(response);
-            
+
+            return ResponseEntity.ok().body(response);
+
         } catch (Exception e) {
             logger.severe("Error al obtener eventos del calendario: " + e.getMessage());
             e.printStackTrace();
-            
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new Object() {
-                    public final boolean success = false;
-                    public final String message = "Error interno del servidor: " + e.getMessage();
-                });
+                    .body(new Object() {
+                        public final boolean success = false;
+                        public final String message = "Error interno del servidor: " + e.getMessage();
+                    });
         }
     }
 
@@ -224,41 +226,40 @@ public class AuthController {
             if (accessToken == null) {
                 logger.warning("Access Token no encontrado para el usuario: " + userEmail);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new Object() {
-                        public final boolean success = false;
-                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
-                        public final String user = userEmail;
-                    });
+                        .body(new Object() {
+                            public final boolean success = false;
+                            public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
+                            public final String user = userEmail;
+                        });
             }
 
             logger.info("Obteniendo archivos de Google Drive para: " + userEmail);
-            List<String> files = googleAuthService.listDriveFiles(accessToken);
-            
+            List<DriveFileDto> files = googleAuthService.listDriveFiles(accessToken);
+
             final String email = userEmail;
-            final List<String> driveFiles = files;
             final int count = files.size();
-            
+
             Object response = new Object() {
                 public final boolean success = true;
                 public final String message = "Archivos de Google Drive obtenidos exitosamente";
                 public final String userEmail = email;
                 public final int fileCount = count;
-                public final List<String> files = driveFiles;
+                public final List<DriveFileDto> filesList = files;
                 public final long timestamp = System.currentTimeMillis();
                 public final String note = "Mostrando últimos " + count + " archivos";
             };
-            
-            return ResponseEntity.ok(response);
-            
+
+            return ResponseEntity.ok().body(response);
+
         } catch (Exception e) {
             logger.severe("Error al obtener archivos de Google Drive: " + e.getMessage());
             e.printStackTrace();
-            
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new Object() {
-                    public final boolean success = false;
-                    public final String message = "Error interno del servidor: " + e.getMessage();
-                });
+                    .body(new Object() {
+                        public final boolean success = false;
+                        public final String message = "Error interno del servidor: " + e.getMessage();
+                    });
         }
     }
 
@@ -270,41 +271,40 @@ public class AuthController {
             if (accessToken == null) {
                 logger.warning("Access Token no encontrado para el usuario: " + userEmail);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new Object() {
-                        public final boolean success = false;
-                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
-                        public final String user = userEmail;
-                    });
+                        .body(new Object() {
+                            public final boolean success = false;
+                            public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
+                            public final String user = userEmail;
+                        });
             }
 
             logger.info("Obteniendo tareas de Google Tasks para: " + userEmail);
-            List<String> tasks = googleAuthService.listTasks(accessToken);
-            
+            List<TaskDto> tasks = googleAuthService.listTasks(accessToken);
+
             final String email = userEmail;
-            final List<String> taskList = tasks;
             final int count = tasks.size();
-            
+
             Object response = new Object() {
                 public final boolean success = true;
                 public final String message = "Tareas obtenidas exitosamente";
                 public final String userEmail = email;
                 public final int taskCount = count;
-                public final List<String> tasks = taskList;
+                public final List<TaskDto> tasksList = tasks;
                 public final long timestamp = System.currentTimeMillis();
                 public final String note = "Mostrando tareas de todas las listas";
             };
-            
-            return ResponseEntity.ok(response);
-            
+
+            return ResponseEntity.ok().body(response);
+
         } catch (Exception e) {
             logger.severe("Error al obtener tareas: " + e.getMessage());
             e.printStackTrace();
-            
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new Object() {
-                    public final boolean success = false;
-                    public final String message = "Error interno del servidor: " + e.getMessage();
-                });
+                    .body(new Object() {
+                        public final boolean success = false;
+                        public final String message = "Error interno del servidor: " + e.getMessage();
+                    });
         }
     }
 

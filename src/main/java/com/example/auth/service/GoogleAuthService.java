@@ -11,6 +11,9 @@ import java.util.logging.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.example.auth.dto.CalendarEventDto;
+import com.example.auth.dto.DriveFileDto;
+import com.example.auth.dto.TaskDto;
 import com.example.auth.model.User;
 import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
@@ -138,69 +141,62 @@ public class GoogleAuthService {
         return refreshTokenStore.get(userEmail);
     }
 
-    public List<String> listCalendarEvents(String accessTokenString) {
-        List<String> eventSummaries = new ArrayList<>();
+    public List<CalendarEventDto> listCalendarEvents(String accessTokenString) {
+        List<CalendarEventDto> eventList = new ArrayList<>();
         try {
-            logger.info("Iniciando búsqueda de eventos del calendario con Access Token");
-            
-            // Build credentials with the access token
+            logger.info("Starting calendar events search with Access Token");
+
             AccessToken accessToken = new AccessToken(accessTokenString, null);
             GoogleCredentials credentials = GoogleCredentials.create(accessToken);
 
-            // Build Calendar service
-            com.google.api.services.calendar.Calendar service = 
-                new com.google.api.services.calendar.Calendar.Builder(
-                    new NetHttpTransport(),
-                    GsonFactory.getDefaultInstance(),
-                    new HttpCredentialsAdapter(credentials))
-                .setApplicationName("Google Auth API")
-                .build();
+            com.google.api.services.calendar.Calendar service =
+                    new com.google.api.services.calendar.Calendar.Builder(
+                            new NetHttpTransport(),
+                            GsonFactory.getDefaultInstance(),
+                            new HttpCredentialsAdapter(credentials))
+                            .setApplicationName("Google Auth API")
+                            .build();
 
-            // List events from primary calendar
             com.google.api.services.calendar.model.Events events = service.events()
-                .list("primary")
-                .setMaxResults(10)
-                .setTimeMin(new com.google.api.client.util.DateTime(System.currentTimeMillis()))
-                .setOrderBy("startTime")
-                .setSingleEvents(true)
-                .execute();
+                    .list("primary")
+                    .setMaxResults(10)
+                    .setTimeMin(new com.google.api.client.util.DateTime(System.currentTimeMillis()))
+                    .setOrderBy("startTime")
+                    .setSingleEvents(true)
+                    .execute();
 
             if (events.getItems() != null && !events.getItems().isEmpty()) {
                 for (com.google.api.services.calendar.model.Event event : events.getItems()) {
-                    String summary = event.getSummary();
-                    if (summary == null || summary.isEmpty()) {
-                        summary = "Sin título";
-                    }
-                    
-                    String startTime = "";
+                    String title = event.getSummary() != null ? event.getSummary() : "No title";
+                    String description = event.getDescription() != null ? event.getDescription() : "";
+                    String dateTime = "";
+
                     if (event.getStart() != null) {
                         if (event.getStart().getDateTime() != null) {
-                            startTime = " - " + event.getStart().getDateTime().toString();
+                            dateTime = event.getStart().getDateTime().toString();
                         } else if (event.getStart().getDate() != null) {
-                            startTime = " - " + event.getStart().getDate().toString();
+                            dateTime = event.getStart().getDate().toString();
                         }
                     }
-                    
-                    eventSummaries.add(summary + startTime);
+
+                    eventList.add(new CalendarEventDto(title, description, dateTime));
                 }
-                logger.info("Encontrados " + eventSummaries.size() + " eventos del calendario");
+                logger.info("Found " + eventList.size() + " calendar events");
             } else {
-                logger.info("No se encontraron eventos próximos en el calendario");
-                eventSummaries.add("No hay eventos próximos");
+                logger.info("No upcoming events found");
             }
 
         } catch (Exception e) {
-            logger.severe("Error al listar eventos del calendario: " + e.getMessage());
+            logger.severe("Error listing calendar events: " + e.getMessage());
             e.printStackTrace();
-            eventSummaries.add("Error al obtener eventos: " + e.getMessage());
         }
-        return eventSummaries;
+        return eventList;
     }
 
-    public List<String> listDriveFiles(String accessTokenString) {
-        List<String> fileNames = new ArrayList<>();
+    public List<DriveFileDto> listDriveFiles(String accessTokenString) {
+        List<DriveFileDto> fileList = new ArrayList<>();
         try {
-            logger.info("Iniciando búsqueda de archivos de Google Drive con Access Token");
+            logger.info("Starting Google Drive files search with Access Token");
             
             // Build credentials with the access token
             AccessToken accessToken = new AccessToken(accessTokenString, null);
@@ -219,32 +215,32 @@ public class GoogleAuthService {
             com.google.api.services.drive.model.FileList result = service.files()
                 .list()
                 .setPageSize(10)
-                .setFields("nextPageToken, files(id, name, mimeType, modifiedTime)")
+                .setFields("nextPageToken, files(id, name, mimeType, modifiedTime, size)")
                 .execute();
 
             java.util.List<com.google.api.services.drive.model.File> files = result.getFiles();
             
             if (files != null && !files.isEmpty()) {
                 for (com.google.api.services.drive.model.File file : files) {
-                    String fileName = file.getName();
-                    String mimeType = file.getMimeType();
+                    String id = file.getId() != null ? file.getId() : "";
+                    String name = file.getName() != null ? file.getName() : "No name";
+                    String mimeType = file.getMimeType() != null ? file.getMimeType() : "Unknown";
                     String modifiedTime = file.getModifiedTime() != null ? 
-                        file.getModifiedTime().toString() : "Desconocido";
+                        file.getModifiedTime().toString() : "Unknown";
+                    String size = file.getSize() != null ? file.getSize().toString() + " bytes" : "Unknown";
                     
-                    fileNames.add(fileName + " (" + mimeType + ") - Modificado: " + modifiedTime);
+                    fileList.add(new DriveFileDto(id, name, mimeType, modifiedTime, size));
                 }
-                logger.info("Encontrados " + fileNames.size() + " archivos en Google Drive");
+                logger.info("Found " + fileList.size() + " files in Google Drive");
             } else {
-                logger.info("No se encontraron archivos en Google Drive");
-                fileNames.add("No hay archivos en Google Drive");
+                logger.info("No files found in Google Drive");
             }
 
         } catch (Exception e) {
-            logger.severe("Error al listar archivos de Google Drive: " + e.getMessage());
+            logger.severe("Error listing Google Drive files: " + e.getMessage());
             e.printStackTrace();
-            fileNames.add("Error al obtener archivos: " + e.getMessage());
         }
-        return fileNames;
+        return fileList;
     }
 
     public List<String> createCalendarEvent(String accessTokenString, String summary, String description, String startDateTime, String endDateTime) {
@@ -296,10 +292,10 @@ public class GoogleAuthService {
         return result;
     }
 
-    public List<String> listTasks(String accessTokenString) {
-        List<String> taskList = new ArrayList<>();
+    public List<TaskDto> listTasks(String accessTokenString) {
+        List<TaskDto> taskList = new ArrayList<>();
         try {
-            logger.info("Iniciando búsqueda de tareas de Google Tasks con Access Token");
+            logger.info("Starting Google Tasks search with Access Token");
             
             // Build credentials with the access token
             AccessToken accessToken = new AccessToken(accessTokenString, null);
@@ -319,9 +315,6 @@ public class GoogleAuthService {
             
             if (taskLists.getItems() != null && !taskLists.getItems().isEmpty()) {
                 for (com.google.api.services.tasks.model.TaskList taskListItem : taskLists.getItems()) {
-                    String listTitle = taskListItem.getTitle();
-                    taskList.add("Lista: " + listTitle);
-                    
                     // Get tasks from this list
                     com.google.api.services.tasks.model.Tasks tasks = service.tasks()
                         .list(taskListItem.getId())
@@ -330,24 +323,24 @@ public class GoogleAuthService {
                     
                     if (tasks.getItems() != null) {
                         for (com.google.api.services.tasks.model.Task task : tasks.getItems()) {
-                            String title = task.getTitle();
-                            String status = task.getStatus();
-                            String dueDate = task.getDue() != null ? task.getDue() : "Sin fecha";
+                            String id = task.getId() != null ? task.getId() : "";
+                            String title = task.getTitle() != null ? task.getTitle() : "No title";
+                            String status = task.getStatus() != null ? task.getStatus() : "needsAction";
+                            String dueDate = task.getDue() != null ? task.getDue() : "No due date";
+                            String notes = task.getNotes() != null ? task.getNotes() : "";
                             
-                            taskList.add("  - " + title + " (" + status + ") - Vence: " + dueDate);
+                            taskList.add(new TaskDto(id, title, status, dueDate, notes));
                         }
                     }
                 }
-                logger.info("Encontradas " + taskList.size() + " tareas en Google Tasks");
+                logger.info("Found " + taskList.size() + " tasks in Google Tasks");
             } else {
-                logger.info("No se encontraron listas de tareas");
-                taskList.add("No hay listas de tareas disponibles");
+                logger.info("No task lists found");
             }
 
         } catch (Exception e) {
-            logger.severe("Error al listar tareas de Google Tasks: " + e.getMessage());
+            logger.severe("Error listing Google Tasks: " + e.getMessage());
             e.printStackTrace();
-            taskList.add("Error al obtener tareas: " + e.getMessage());
         }
         return taskList;
     }
