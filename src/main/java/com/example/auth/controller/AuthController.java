@@ -362,6 +362,7 @@ public class AuthController {
             List<TaskListDto> taskLists = googleAuthService.listTasks(accessToken);
 
             final String email = userEmail;
+            final List<TaskListDto> finalTaskLists = taskLists;
             final int listCount = taskLists.size();
             
             // Contar total de tareas
@@ -379,7 +380,7 @@ public class AuthController {
                 public final String userEmail = email;
                 public final int taskListCount = listCount;
                 public final int totalTasks = taskCount;
-                public final List<TaskListDto> taskLists = taskLists;
+                public final List<TaskListDto> taskLists = finalTaskLists;
                 public final long timestamp = System.currentTimeMillis();
                 public final String note = "Mostrando " + listCount + " listas con " + taskCount + " tareas total";
             };
