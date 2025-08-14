@@ -222,14 +222,13 @@ public class GoogleAuthService {
             
             if (files != null && !files.isEmpty()) {
                 for (com.google.api.services.drive.model.File file : files) {
-                    String id = file.getId() != null ? file.getId() : "";
                     String name = file.getName() != null ? file.getName() : "No name";
                     String mimeType = file.getMimeType() != null ? file.getMimeType() : "Unknown";
                     String modifiedTime = file.getModifiedTime() != null ? 
                         file.getModifiedTime().toString() : "Unknown";
                     String size = file.getSize() != null ? file.getSize().toString() + " bytes" : "Unknown";
                     
-                    fileList.add(new DriveFileDto(id, name, mimeType, modifiedTime, size));
+                    fileList.add(new DriveFileDto(name, mimeType, modifiedTime, size));
                 }
                 logger.info("Found " + fileList.size() + " files in Google Drive");
             } else {
@@ -323,13 +322,12 @@ public class GoogleAuthService {
                     
                     if (tasks.getItems() != null) {
                         for (com.google.api.services.tasks.model.Task task : tasks.getItems()) {
-                            String id = task.getId() != null ? task.getId() : "";
                             String title = task.getTitle() != null ? task.getTitle() : "No title";
                             String status = task.getStatus() != null ? task.getStatus() : "needsAction";
                             String dueDate = task.getDue() != null ? task.getDue() : "No due date";
                             String notes = task.getNotes() != null ? task.getNotes() : "";
                             
-                            taskList.add(new TaskDto(id, title, status, dueDate, notes));
+                            taskList.add(new TaskDto(title, status, dueDate, notes));
                         }
                     }
                 }

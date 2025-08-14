@@ -1,22 +1,16 @@
 package com.example.auth.dto;
 
 public class DriveFileDto {
-    private String id;
     private String name;
     private String mimeType;
     private String modifiedTime;
     private String size;
 
-    public DriveFileDto(String id, String name, String mimeType, String modifiedTime, String size) {
-        this.id = id;
+    public DriveFileDto(String name, String mimeType, String modifiedTime, String size) {
         this.name = name;
         this.mimeType = mimeType;
         this.modifiedTime = modifiedTime;
         this.size = size;
-    }
-
-    public String getId() {
-        return id;
     }
 
     public String getName() {
