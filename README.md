@@ -30,8 +30,9 @@ API para autenticación con Google y consulta de Calendar, Drive y Tasks.
 ### Google Drive
 
 **GET** `/api/auth/drive/files/{userEmail}`
-- Descripción: Listar archivos recientes de Google Drive
+- Descripción: Listar archivos y carpetas de Google Drive con estructura jerárquica
 - Ejemplo: `/api/auth/drive/files/juan@empresa.com`
+- Respuesta: Estructura de árbol con carpetas y sus archivos anidados
 
 **POST** `/api/auth/drive/upload/{userEmail}`
 - Descripción: Subir archivo a Google Drive

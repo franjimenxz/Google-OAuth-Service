@@ -3,6 +3,7 @@ package com.example.auth.service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -194,7 +195,7 @@ public class GoogleAuthService {
     }
 
     public List<DriveFileDto> listDriveFiles(String accessTokenString) {
-        List<DriveFileDto> fileList = new ArrayList<>();
+        List<DriveFileDto> rootItems = new ArrayList<>();
         try {
             logger.info("Starting Google Drive files search with Access Token");
             
@@ -211,26 +212,71 @@ public class GoogleAuthService {
                 .setApplicationName("Google Auth API")
                 .build();
 
-            // List files from Drive
+            // Get all files and folders
             com.google.api.services.drive.model.FileList result = service.files()
                 .list()
-                .setPageSize(10)
-                .setFields("nextPageToken, files(id, name, mimeType, modifiedTime, size)")
+                .setPageSize(100) // Aumentamos para obtener más items
+                .setFields("nextPageToken, files(id, name, mimeType, modifiedTime, size, parents)")
                 .execute();
 
-            java.util.List<com.google.api.services.drive.model.File> files = result.getFiles();
+            java.util.List<com.google.api.services.drive.model.File> allFiles = result.getFiles();
             
-            if (files != null && !files.isEmpty()) {
-                for (com.google.api.services.drive.model.File file : files) {
-                    String name = file.getName() != null ? file.getName() : "No name";
-                    String mimeType = file.getMimeType() != null ? file.getMimeType() : "Unknown";
-                    String modifiedTime = file.getModifiedTime() != null ? 
-                        file.getModifiedTime().toString() : "Unknown";
-                    String size = file.getSize() != null ? file.getSize().toString() + " bytes" : "Unknown";
-                    
-                    fileList.add(new DriveFileDto(name, mimeType, modifiedTime, size));
+            if (allFiles != null && !allFiles.isEmpty()) {
+                // Separar carpetas de archivos
+                Map<String, DriveFileDto> folderMap = new HashMap<>();
+                List<com.google.api.services.drive.model.File> orphanFiles = new ArrayList<>();
+                
+                // Primero crear todas las carpetas
+                for (com.google.api.services.drive.model.File file : allFiles) {
+                    if ("application/vnd.google-apps.folder".equals(file.getMimeType())) {
+                        String id = file.getId();
+                        String name = file.getName() != null ? file.getName() : "No name";
+                        String modifiedTime = file.getModifiedTime() != null ? 
+                            file.getModifiedTime().toString() : "Unknown";
+                        
+                        DriveFileDto folder = new DriveFileDto(id, name, file.getMimeType(), 
+                            modifiedTime, "Folder", "folder");
+                        folder.setChildren(new ArrayList<>());
+                        folderMap.put(id, folder);
+                        
+                        // Si es carpeta raíz (sin padres o padre es root), agregar a rootItems
+                        if (file.getParents() == null || file.getParents().isEmpty()) {
+                            rootItems.add(folder);
+                        }
+                    }
                 }
-                logger.info("Found " + fileList.size() + " files in Google Drive");
+                
+                // Luego procesar archivos
+                for (com.google.api.services.drive.model.File file : allFiles) {
+                    if (!"application/vnd.google-apps.folder".equals(file.getMimeType())) {
+                        String id = file.getId();
+                        String name = file.getName() != null ? file.getName() : "No name";
+                        String mimeType = file.getMimeType() != null ? file.getMimeType() : "Unknown";
+                        String modifiedTime = file.getModifiedTime() != null ? 
+                            file.getModifiedTime().toString() : "Unknown";
+                        String size = file.getSize() != null ? file.getSize().toString() + " bytes" : "Unknown";
+                        
+                        DriveFileDto fileDto = new DriveFileDto(id, name, mimeType, modifiedTime, size, "file");
+                        
+                        // Buscar carpeta padre
+                        boolean addedToFolder = false;
+                        if (file.getParents() != null && !file.getParents().isEmpty()) {
+                            String parentId = file.getParents().get(0);
+                            DriveFileDto parentFolder = folderMap.get(parentId);
+                            if (parentFolder != null) {
+                                parentFolder.getChildren().add(fileDto);
+                                addedToFolder = true;
+                            }
+                        }
+                        
+                        // Si no tiene padre conocido, es archivo raíz
+                        if (!addedToFolder) {
+                            rootItems.add(fileDto);
+                        }
+                    }
+                }
+                
+                logger.info("Found " + rootItems.size() + " root items in Google Drive");
             } else {
                 logger.info("No files found in Google Drive");
             }
@@ -239,7 +285,7 @@ public class GoogleAuthService {
             logger.severe("Error listing Google Drive files: " + e.getMessage());
             e.printStackTrace();
         }
-        return fileList;
+        return rootItems;
     }
 
     public List<String> uploadFileToDrive(String accessTokenString, String fileName, String mimeType, byte[] fileContent, String folderId) {
