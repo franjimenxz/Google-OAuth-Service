@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.auth.dto.AuthResponse;
 import com.example.auth.dto.CalendarEventDto;
@@ -263,6 +264,63 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/drive/upload/{userEmail}")
+    public ResponseEntity<Object> uploadFileToDrive(@PathVariable String userEmail,
+                                                   @RequestParam("file") MultipartFile file) {
+        try {
+            String accessToken = googleAuthService.getAccessToken(userEmail);
+            if (accessToken == null) {
+                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new Object() {
+                            public final boolean success = false;
+                            public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
+                            public final String user = userEmail;
+                        });
+            }
+
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new Object() {
+                            public final boolean success = false;
+                            public final String message = "No se ha seleccionado ningún archivo";
+                        });
+            }
+
+            logger.info("Subiendo archivo a Google Drive para: " + userEmail);
+            
+            String fileName = file.getOriginalFilename();
+            String mimeType = file.getContentType();
+            byte[] fileContent = file.getBytes();
+            
+            List<String> result = googleAuthService.uploadFileToDrive(accessToken, fileName, mimeType, fileContent);
+
+            final String email = userEmail;
+            final List<String> uploadResult = result;
+
+            Object response = new Object() {
+                public final boolean success = true;
+                public final String message = "Archivo subido exitosamente";
+                public final String userEmail = email;
+                public final String fileName = file.getOriginalFilename();
+                public final String fileSize = file.getSize() + " bytes";
+                public final List<String> result = uploadResult;
+                public final long timestamp = System.currentTimeMillis();
+            };
+
+            return ResponseEntity.ok().body(response);
+
+        } catch (Exception e) {
+            logger.severe("Error al subir archivo a Google Drive: " + e.getMessage());
+            e.printStackTrace();
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new Object() {
+                        public final boolean success = false;
+                        public final String message = "Error interno del servidor: " + e.getMessage();
+                    });
+        }
+    }
 
     @GetMapping("/tasks/{userEmail}")
     public ResponseEntity<Object> getTasks(@PathVariable String userEmail) {
@@ -312,8 +370,8 @@ public class AuthController {
     @GetMapping("/info")
     public ResponseEntity<Object> getApiInfo() {
         return ResponseEntity.ok(new Object() {
-            public final String version = "2.1.0";
-            public final String description = "API de autenticación con Google y consulta de servicios (Calendar, Drive, Tasks)";
+            public final String version = "2.2.0";
+            public final String description = "API de autenticación con Google y servicios integrados (Calendar, Drive, Tasks)";
             public final String[] endpoints = {
                 "POST /api/auth/google - Autenticar con código de autorización",
                 "GET /api/auth/google/callback - Callback de Google OAuth",
@@ -321,10 +379,11 @@ public class AuthController {
                 "GET /api/auth/info - Información de la API",
                 "GET /api/auth/calendar/events/{userEmail} - Listar eventos del calendario",
                 "GET /api/auth/drive/files/{userEmail} - Listar archivos de Google Drive",
+                "POST /api/auth/drive/upload/{userEmail} - Subir archivo a Google Drive",
                 "GET /api/auth/tasks/{userEmail} - Listar tareas de Google Tasks"
             };
             public final String usage = "Envía un POST a /api/auth/google con un JSON: {'code': 'authorization_code'}";
-            public final String note = "Solo endpoints de consulta (GET). Los endpoints requieren autenticación previa";
+            public final String note = "Endpoints de consulta (GET) y upload de archivos (POST). Todos requieren autenticación previa";
         });
     }
 }

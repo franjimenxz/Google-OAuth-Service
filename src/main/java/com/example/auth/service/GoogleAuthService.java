@@ -242,6 +242,52 @@ public class GoogleAuthService {
         return fileList;
     }
 
+    public List<String> uploadFileToDrive(String accessTokenString, String fileName, String mimeType, byte[] fileContent) {
+        List<String> result = new ArrayList<>();
+        try {
+            logger.info("Starting file upload to Google Drive");
+            
+            // Build credentials with the access token
+            AccessToken accessToken = new AccessToken(accessTokenString, null);
+            GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+
+            // Build Drive service
+            com.google.api.services.drive.Drive service = 
+                new com.google.api.services.drive.Drive.Builder(
+                    new NetHttpTransport(),
+                    GsonFactory.getDefaultInstance(),
+                    new HttpCredentialsAdapter(credentials))
+                .setApplicationName("Google Auth API")
+                .build();
+
+            // Create file metadata
+            com.google.api.services.drive.model.File fileMetadata = 
+                new com.google.api.services.drive.model.File();
+            fileMetadata.setName(fileName);
+
+            // Create input stream from byte array
+            java.io.ByteArrayInputStream inputStream = new java.io.ByteArrayInputStream(fileContent);
+            com.google.api.client.http.InputStreamContent mediaContent = 
+                new com.google.api.client.http.InputStreamContent(mimeType, inputStream);
+
+            // Upload file
+            com.google.api.services.drive.model.File uploadedFile = service.files()
+                .create(fileMetadata, mediaContent)
+                .setFields("id, name, size")
+                .execute();
+
+            result.add("Archivo subido exitosamente: " + uploadedFile.getName());
+            result.add("Tamaño: " + (uploadedFile.getSize() != null ? uploadedFile.getSize() + " bytes" : "Desconocido"));
+            logger.info("File uploaded successfully: " + uploadedFile.getName());
+
+        } catch (Exception e) {
+            logger.severe("Error uploading file to Google Drive: " + e.getMessage());
+            e.printStackTrace();
+            result.add("Error al subir archivo: " + e.getMessage());
+        }
+        return result;
+    }
+
     public List<String> createCalendarEvent(String accessTokenString, String summary, String description, String startDateTime, String endDateTime) {
         List<String> result = new ArrayList<>();
         try {

@@ -33,6 +33,12 @@ API para autenticación con Google y consulta de Calendar, Drive y Tasks.
 - Descripción: Listar archivos recientes de Google Drive
 - Ejemplo: `/api/auth/drive/files/juan@empresa.com`
 
+**POST** `/api/auth/drive/upload/{userEmail}`
+- Descripción: Subir archivo a Google Drive
+- Body: form-data con campo `file` (tipo file)
+- Ejemplo: `/api/auth/drive/upload/juan@empresa.com`
+- Nota: Usar multipart/form-data en Postman
+
 ### Google Tasks
 
 **GET** `/api/auth/tasks/{userEmail}`
@@ -48,7 +54,7 @@ API para autenticación con Google y consulta de Calendar, Drive y Tasks.
 
 1. **Autenticarse**: Hacer POST a `/api/auth/google` con el código de OAuth
 2. **Consultar servicios**: Una vez autenticado, usar cualquier endpoint GET con tu email
-3. **Solo lectura**: Esta API permite únicamente consultar datos, no modificarlos
+3. **Subir archivos**: Usar POST `/drive/upload/{userEmail}` con form-data y campo "file"
 
 ## Notas importantes
 
@@ -56,7 +62,7 @@ API para autenticación con Google y consulta de Calendar, Drive y Tasks.
 - El email usado en la URL debe coincidir con el usuario autenticado
 - Los tokens se guardan en memoria, se pierden al reiniciar la aplicación
 - Para usar Tasks, Calendar y Drive, asegúrate de que las APIs estén habilitadas en Google Cloud Console
-- Solo permisos de lectura: no se pueden crear/modificar datos, solo consultarlos
+- Funciones disponibles: consulta de datos y upload de archivos a Drive
 
 ## Ejecutar proyecto
 
