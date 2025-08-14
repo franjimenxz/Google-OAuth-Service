@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import com.example.auth.dto.CalendarEventDto;
 import com.example.auth.dto.DriveFileDto;
 import com.example.auth.dto.TaskDto;
+import com.example.auth.dto.TaskListDto;
 import com.example.auth.model.User;
 import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
@@ -388,8 +389,8 @@ public class GoogleAuthService {
         return result;
     }
 
-    public List<TaskDto> listTasks(String accessTokenString) {
-        List<TaskDto> taskList = new ArrayList<>();
+    public List<TaskListDto> listTasks(String accessTokenString) {
+        List<TaskListDto> taskListsResponse = new ArrayList<>();
         try {
             logger.info("Starting Google Tasks search with Access Token");
             
@@ -411,24 +412,35 @@ public class GoogleAuthService {
             
             if (taskLists.getItems() != null && !taskLists.getItems().isEmpty()) {
                 for (com.google.api.services.tasks.model.TaskList taskListItem : taskLists.getItems()) {
+                    String listId = taskListItem.getId();
+                    String listTitle = taskListItem.getTitle() != null ? taskListItem.getTitle() : "No title";
+                    
+                    // Crear TaskListDto
+                    TaskListDto taskListDto = new TaskListDto(listId, listTitle, "tasklist");
+                    List<TaskDto> tasksInList = new ArrayList<>();
+                    
                     // Get tasks from this list
                     com.google.api.services.tasks.model.Tasks tasks = service.tasks()
-                        .list(taskListItem.getId())
-                        .setMaxResults(10)
+                        .list(listId)
+                        .setMaxResults(20)
                         .execute();
                     
                     if (tasks.getItems() != null) {
                         for (com.google.api.services.tasks.model.Task task : tasks.getItems()) {
+                            String taskId = task.getId() != null ? task.getId() : "";
                             String title = task.getTitle() != null ? task.getTitle() : "No title";
                             String status = task.getStatus() != null ? task.getStatus() : "needsAction";
                             String dueDate = task.getDue() != null ? task.getDue() : "No due date";
                             String notes = task.getNotes() != null ? task.getNotes() : "";
                             
-                            taskList.add(new TaskDto(title, status, dueDate, notes));
+                            tasksInList.add(new TaskDto(taskId, title, status, dueDate, notes, "task"));
                         }
                     }
+                    
+                    taskListDto.setTasks(tasksInList);
+                    taskListsResponse.add(taskListDto);
                 }
-                logger.info("Found " + taskList.size() + " tasks in Google Tasks");
+                logger.info("Found " + taskListsResponse.size() + " task lists in Google Tasks");
             } else {
                 logger.info("No task lists found");
             }
@@ -437,7 +449,7 @@ public class GoogleAuthService {
             logger.severe("Error listing Google Tasks: " + e.getMessage());
             e.printStackTrace();
         }
-        return taskList;
+        return taskListsResponse;
     }
 
     public List<String> createTask(String accessTokenString, String title, String notes, String dueDate) {

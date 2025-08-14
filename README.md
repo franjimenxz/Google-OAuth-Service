@@ -51,8 +51,9 @@ API para autenticación con Google y consulta de Calendar, Drive y Tasks.
 ### Google Tasks
 
 **GET** `/api/auth/tasks/{userEmail}`
-- Descripción: Listar todas las tareas del usuario
+- Descripción: Listar todas las listas de tareas con sus tareas organizadas jerárquicamente
 - Ejemplo: `/api/auth/tasks/juan@empresa.com`
+- Respuesta: Estructura de listas de tareas con tareas anidadas
 
 ### Información
 

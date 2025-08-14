@@ -23,6 +23,7 @@ import com.example.auth.dto.DriveFileDto;
 import com.example.auth.dto.FileUploadRequest;
 import com.example.auth.dto.GoogleAuthRequest;
 import com.example.auth.dto.TaskDto;
+import com.example.auth.dto.TaskListDto;
 import com.example.auth.model.User;
 import com.example.auth.service.GoogleAuthService;
 import com.google.api.client.auth.oauth2.TokenResponse;
@@ -358,19 +359,29 @@ public class AuthController {
             }
 
             logger.info("Obteniendo tareas de Google Tasks para: " + userEmail);
-            List<TaskDto> tasks = googleAuthService.listTasks(accessToken);
+            List<TaskListDto> taskLists = googleAuthService.listTasks(accessToken);
 
             final String email = userEmail;
-            final int count = tasks.size();
+            final int listCount = taskLists.size();
+            
+            // Contar total de tareas
+            int totalTasks = 0;
+            for (TaskListDto taskList : taskLists) {
+                if (taskList.getTasks() != null) {
+                    totalTasks += taskList.getTasks().size();
+                }
+            }
+            final int taskCount = totalTasks;
 
             Object response = new Object() {
                 public final boolean success = true;
-                public final String message = "Tareas obtenidas exitosamente";
+                public final String message = "Listas de tareas obtenidas exitosamente";
                 public final String userEmail = email;
-                public final int taskCount = count;
-                public final List<TaskDto> tasksList = tasks;
+                public final int taskListCount = listCount;
+                public final int totalTasks = taskCount;
+                public final List<TaskListDto> taskLists = taskLists;
                 public final long timestamp = System.currentTimeMillis();
-                public final String note = "Mostrando tareas de todas las listas";
+                public final String note = "Mostrando " + listCount + " listas con " + taskCount + " tareas total";
             };
 
             return ResponseEntity.ok().body(response);
