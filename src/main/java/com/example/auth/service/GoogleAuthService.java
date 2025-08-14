@@ -196,5 +196,260 @@ public class GoogleAuthService {
         }
         return eventSummaries;
     }
+
+    public List<String> listDriveFiles(String accessTokenString) {
+        List<String> fileNames = new ArrayList<>();
+        try {
+            logger.info("Iniciando búsqueda de archivos de Google Drive con Access Token");
+            
+            // Build credentials with the access token
+            AccessToken accessToken = new AccessToken(accessTokenString, null);
+            GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+
+            // Build Drive service
+            com.google.api.services.drive.Drive service = 
+                new com.google.api.services.drive.Drive.Builder(
+                    new NetHttpTransport(),
+                    GsonFactory.getDefaultInstance(),
+                    new HttpCredentialsAdapter(credentials))
+                .setApplicationName("Google Auth API")
+                .build();
+
+            // List files from Drive
+            com.google.api.services.drive.model.FileList result = service.files()
+                .list()
+                .setPageSize(10)
+                .setFields("nextPageToken, files(id, name, mimeType, modifiedTime)")
+                .execute();
+
+            java.util.List<com.google.api.services.drive.model.File> files = result.getFiles();
+            
+            if (files != null && !files.isEmpty()) {
+                for (com.google.api.services.drive.model.File file : files) {
+                    String fileName = file.getName();
+                    String mimeType = file.getMimeType();
+                    String modifiedTime = file.getModifiedTime() != null ? 
+                        file.getModifiedTime().toString() : "Desconocido";
+                    
+                    fileNames.add(fileName + " (" + mimeType + ") - Modificado: " + modifiedTime);
+                }
+                logger.info("Encontrados " + fileNames.size() + " archivos en Google Drive");
+            } else {
+                logger.info("No se encontraron archivos en Google Drive");
+                fileNames.add("No hay archivos en Google Drive");
+            }
+
+        } catch (Exception e) {
+            logger.severe("Error al listar archivos de Google Drive: " + e.getMessage());
+            e.printStackTrace();
+            fileNames.add("Error al obtener archivos: " + e.getMessage());
+        }
+        return fileNames;
+    }
+
+    public List<String> createCalendarEvent(String accessTokenString, String summary, String description, String startDateTime, String endDateTime) {
+        List<String> result = new ArrayList<>();
+        try {
+            logger.info("Creando evento en Google Calendar");
+            
+            // Build credentials with the access token
+            AccessToken accessToken = new AccessToken(accessTokenString, null);
+            GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+
+            // Build Calendar service
+            com.google.api.services.calendar.Calendar service = 
+                new com.google.api.services.calendar.Calendar.Builder(
+                    new NetHttpTransport(),
+                    GsonFactory.getDefaultInstance(),
+                    new HttpCredentialsAdapter(credentials))
+                .setApplicationName("Google Auth API")
+                .build();
+
+            // Create event
+            com.google.api.services.calendar.model.Event event = new com.google.api.services.calendar.model.Event()
+                .setSummary(summary)
+                .setDescription(description);
+
+            com.google.api.client.util.DateTime startDate = new com.google.api.client.util.DateTime(startDateTime);
+            com.google.api.services.calendar.model.EventDateTime start = new com.google.api.services.calendar.model.EventDateTime()
+                .setDateTime(startDate)
+                .setTimeZone("America/Argentina/Buenos_Aires");
+            event.setStart(start);
+
+            com.google.api.client.util.DateTime endDate = new com.google.api.client.util.DateTime(endDateTime);
+            com.google.api.services.calendar.model.EventDateTime end = new com.google.api.services.calendar.model.EventDateTime()
+                .setDateTime(endDate)
+                .setTimeZone("America/Argentina/Buenos_Aires");
+            event.setEnd(end);
+
+            String calendarId = "primary";
+            event = service.events().insert(calendarId, event).execute();
+            
+            result.add("Evento creado exitosamente: " + event.getHtmlLink());
+            logger.info("Evento creado con ID: " + event.getId());
+
+        } catch (Exception e) {
+            logger.severe("Error al crear evento en Google Calendar: " + e.getMessage());
+            e.printStackTrace();
+            result.add("Error al crear evento: " + e.getMessage());
+        }
+        return result;
+    }
+
+    public List<String> listTasks(String accessTokenString) {
+        List<String> taskList = new ArrayList<>();
+        try {
+            logger.info("Iniciando búsqueda de tareas de Google Tasks con Access Token");
+            
+            // Build credentials with the access token
+            AccessToken accessToken = new AccessToken(accessTokenString, null);
+            GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+
+            // Build Tasks service
+            com.google.api.services.tasks.Tasks service = 
+                new com.google.api.services.tasks.Tasks.Builder(
+                    new NetHttpTransport(),
+                    GsonFactory.getDefaultInstance(),
+                    new HttpCredentialsAdapter(credentials))
+                .setApplicationName("Google Auth API")
+                .build();
+
+            // Get all task lists
+            com.google.api.services.tasks.model.TaskLists taskLists = service.tasklists().list().execute();
+            
+            if (taskLists.getItems() != null && !taskLists.getItems().isEmpty()) {
+                for (com.google.api.services.tasks.model.TaskList taskListItem : taskLists.getItems()) {
+                    String listTitle = taskListItem.getTitle();
+                    taskList.add("Lista: " + listTitle);
+                    
+                    // Get tasks from this list
+                    com.google.api.services.tasks.model.Tasks tasks = service.tasks()
+                        .list(taskListItem.getId())
+                        .setMaxResults(10L)
+                        .execute();
+                    
+                    if (tasks.getItems() != null) {
+                        for (com.google.api.services.tasks.model.Task task : tasks.getItems()) {
+                            String title = task.getTitle();
+                            String status = task.getStatus();
+                            String dueDate = task.getDue() != null ? task.getDue().toString() : "Sin fecha";
+                            
+                            taskList.add("  - " + title + " (" + status + ") - Vence: " + dueDate);
+                        }
+                    }
+                }
+                logger.info("Encontradas " + taskList.size() + " tareas en Google Tasks");
+            } else {
+                logger.info("No se encontraron listas de tareas");
+                taskList.add("No hay listas de tareas disponibles");
+            }
+
+        } catch (Exception e) {
+            logger.severe("Error al listar tareas de Google Tasks: " + e.getMessage());
+            e.printStackTrace();
+            taskList.add("Error al obtener tareas: " + e.getMessage());
+        }
+        return taskList;
+    }
+
+    public List<String> createTask(String accessTokenString, String title, String notes, String dueDate) {
+        List<String> result = new ArrayList<>();
+        try {
+            logger.info("Creando tarea en Google Tasks");
+            
+            // Build credentials with the access token
+            AccessToken accessToken = new AccessToken(accessTokenString, null);
+            GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+
+            // Build Tasks service
+            com.google.api.services.tasks.Tasks service = 
+                new com.google.api.services.tasks.Tasks.Builder(
+                    new NetHttpTransport(),
+                    GsonFactory.getDefaultInstance(),
+                    new HttpCredentialsAdapter(credentials))
+                .setApplicationName("Google Auth API")
+                .build();
+
+            // Get the default task list
+            com.google.api.services.tasks.model.TaskLists taskLists = service.tasklists().list().execute();
+            String taskListId = "@default";
+            
+            if (taskLists.getItems() != null && !taskLists.getItems().isEmpty()) {
+                taskListId = taskLists.getItems().get(0).getId();
+            }
+
+            // Create task
+            com.google.api.services.tasks.model.Task task = new com.google.api.services.tasks.model.Task()
+                .setTitle(title)
+                .setNotes(notes);
+
+            if (dueDate != null && !dueDate.trim().isEmpty()) {
+                try {
+                    com.google.api.client.util.DateTime due = new com.google.api.client.util.DateTime(dueDate);
+                    task.setDue(due);
+                } catch (Exception e) {
+                    logger.warning("Formato de fecha inválido, creando tarea sin fecha de vencimiento");
+                }
+            }
+
+            task = service.tasks().insert(taskListId, task).execute();
+            
+            result.add("Tarea creada exitosamente: " + task.getTitle());
+            logger.info("Tarea creada con ID: " + task.getId());
+
+        } catch (Exception e) {
+            logger.severe("Error al crear tarea en Google Tasks: " + e.getMessage());
+            e.printStackTrace();
+            result.add("Error al crear tarea: " + e.getMessage());
+        }
+        return result;
+    }
+
+    public List<String> updateTaskStatus(String accessTokenString, String taskId, String status) {
+        List<String> result = new ArrayList<>();
+        try {
+            logger.info("Actualizando estado de tarea en Google Tasks");
+            
+            // Build credentials with the access token
+            AccessToken accessToken = new AccessToken(accessTokenString, null);
+            GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+
+            // Build Tasks service
+            com.google.api.services.tasks.Tasks service = 
+                new com.google.api.services.tasks.Tasks.Builder(
+                    new NetHttpTransport(),
+                    GsonFactory.getDefaultInstance(),
+                    new HttpCredentialsAdapter(credentials))
+                .setApplicationName("Google Auth API")
+                .build();
+
+            // Get the default task list
+            com.google.api.services.tasks.model.TaskLists taskLists = service.tasklists().list().execute();
+            String taskListId = "@default";
+            
+            if (taskLists.getItems() != null && !taskLists.getItems().isEmpty()) {
+                taskListId = taskLists.getItems().get(0).getId();
+            }
+
+            // Get the task and update its status
+            com.google.api.services.tasks.model.Task task = service.tasks().get(taskListId, taskId).execute();
+            task.setStatus(status);
+            
+            if ("completed".equals(status)) {
+                task.setCompleted(new com.google.api.client.util.DateTime(System.currentTimeMillis()));
+            }
+
+            task = service.tasks().update(taskListId, taskId, task).execute();
+            
+            result.add("Estado de tarea actualizado a: " + task.getStatus());
+            logger.info("Tarea actualizada con ID: " + task.getId());
+
+        } catch (Exception e) {
+            logger.severe("Error al actualizar tarea en Google Tasks: " + e.getMessage());
+            e.printStackTrace();
+            result.add("Error al actualizar tarea: " + e.getMessage());
+        }
+        return result;
+    }
 }
 

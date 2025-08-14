@@ -29,6 +29,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")
 
 public class AuthController {
 
@@ -45,7 +46,7 @@ public class AuthController {
 
             // Define the redirect URI used in the frontend for the authorization code flow
             // This MUST match the Authorized Redirect URI configured in Google Cloud Console
-            String redirectUri = "http://localhost:8080/api/auth/google/callback";
+            String redirectUri = "https://5395b45c15ea.ngrok-free.app/api/auth/google/callback";
 
             // Exchange authorization code for tokens
             TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(request.getCode(), redirectUri);
@@ -89,87 +90,6 @@ public class AuthController {
         }
     }
 
-    //  Endpoint para procesar autenticación usando cookies HTTPOnly
-    @PostMapping("/google/cookie")
-    public ResponseEntity<AuthResponse> authenticateWithCookie(HttpServletRequest request, 
-                                                             HttpServletResponse response) {
-        try {
-            logger.info(" Procesando autenticación con cookie HTTPOnly");
-            
-            // Buscar cookies con el código de autorización y state
-            String authCode = null;
-            String oauthState = null;
-            
-            if (request.getCookies() != null) {
-                for (Cookie cookie : request.getCookies()) {
-                    if ("google_auth_code".equals(cookie.getName())) {
-                        authCode = cookie.getValue();
-                    } else if ("oauth_state".equals(cookie.getName())) {
-                        oauthState = cookie.getValue();
-                    }
-                }
-            }
-            
-            if (authCode == null) {
-                logger.warning(" No se encontró cookie de código de autorización");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new AuthResponse(false, "No se encontró código de autorización en cookie"));
-            }
-            
-            logger.info(" Código de autorización encontrado en cookie");
-            
-            // Usar el endpoint existente para procesar el código
-            String redirectUri = "http://localhost:8080/api/auth/google/callback";
-            TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(authCode, redirectUri);
-            
-            String idTokenString = tokenResponse.get("id_token").toString();
-            String accessToken = tokenResponse.getAccessToken();
-            String refreshToken = tokenResponse.getRefreshToken();
-            
-            User user = googleAuthService.authenticateUser(idTokenString, accessToken, refreshToken);
-            
-            if (user != null) {
-                // Limpiar cookies de autenticación (ya no las necesitamos)
-                Cookie clearAuthCode = new Cookie("google_auth_code", "");
-                clearAuthCode.setMaxAge(0);
-                clearAuthCode.setPath("/");
-                clearAuthCode.setHttpOnly(true);
-                response.addCookie(clearAuthCode);
-                
-                if (oauthState != null) {
-                    Cookie clearState = new Cookie("oauth_state", "");
-                    clearState.setMaxAge(0);
-                    clearState.setPath("/");
-                    clearState.setHttpOnly(true);
-                    response.addCookie(clearState);
-                }
-                
-                logger.info(" Autenticación exitosa para usuario: " + user.getEmail());
-                logger.info(" Cookies de autenticación limpiadas");
-                
-                AuthResponse authResponse = new AuthResponse(
-                    true,
-                    "Autenticación exitosa con cookie HTTPOnly - Máxima seguridad",
-                    user
-                );
-                
-                return ResponseEntity.ok(authResponse);
-                
-            } else {
-                logger.warning(" Fallo en la verificación del ID Token");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new AuthResponse(false, "Error al verificar el ID Token"));
-            }
-            
-        } catch (Exception e) {
-            logger.severe(" Error en autenticación con cookie: " + e.getMessage());
-            e.printStackTrace();
-            
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new AuthResponse(false, "Error interno del servidor: " + e.getMessage()));
-        }
-    }
-
     
     @GetMapping("/status")
     public ResponseEntity<String> getStatus() {
@@ -188,11 +108,11 @@ public class AuthController {
         }
 
         try {
-            logger.info(" Callback recibido - Procesando directamente con máxima seguridad");
+            logger.info("Callback recibido - Procesando autenticación");
             
-            // OPCIÓN A: Procesar TODO aquí (sin endpoint adicional)
-            String redirectUri = "http://localhost:8080/api/auth/google/callback";
-            logger.info(" Usando redirect_uri: " + redirectUri);
+            // Procesar autenticación
+            String redirectUri = "https://5395b45c15ea.ngrok-free.app/api/auth/google/callback";
+            logger.info("Usando redirect_uri: " + redirectUri);
             TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(code, redirectUri);
             
             String idTokenString = tokenResponse.get("id_token").toString();
@@ -204,7 +124,7 @@ public class AuthController {
             if (user != null) {
                 logger.info("Autenticación exitosa para usuario: " + user.getEmail());
                 
-                // OPCIÓN SIMPLE: Pasar datos del usuario en la URL
+                // Pasar datos del usuario en la URL
                 String userParams = "?auth=success" +
                     "&user_id=" + java.net.URLEncoder.encode(user.getId(), java.nio.charset.StandardCharsets.UTF_8) +
                     "&user_email=" + java.net.URLEncoder.encode(user.getEmail(), java.nio.charset.StandardCharsets.UTF_8) +
@@ -212,115 +132,51 @@ public class AuthController {
                     "&user_picture=" + java.net.URLEncoder.encode(user.getPicture(), java.nio.charset.StandardCharsets.UTF_8) +
                     "&email_verified=" + user.isEmailVerified();
                 
-                logger.info(" Redirigiendo con datos del usuario en URL");
+                logger.info("Redirigiendo con datos del usuario en URL");
                 
-                // Redirección directa con todos los datos del usuario
+                // Redirección al frontend con datos del usuario
                 return ResponseEntity.status(HttpStatus.FOUND)
                     .header("Location", "http://localhost:4200/home" + userParams)
                     .build();
                 
             } else {
-                logger.warning(" Fallo en la verificación del ID Token");
+                logger.warning("Fallo en la verificación del ID Token");
                 
-                // Redirección directa al frontend con error
+                // Redirección al frontend con error
                 return ResponseEntity.status(HttpStatus.FOUND)
                     .header("Location", "http://localhost:4200/home?auth=error&message=token_verification_failed")
                     .build();
             }
             
-            /* OPCIÓN B: Almacenar en cookies para endpoint separado
-            Cookie authCodeCookie = new Cookie("google_auth_code", code);
-            authCodeCookie.setHttpOnly(true);
-            authCodeCookie.setSecure(false);
-            authCodeCookie.setPath("/");
-            authCodeCookie.setMaxAge(600);
-            authCodeCookie.setAttribute("SameSite", "Lax");
-            response.addCookie(authCodeCookie);
-            
-            String html = "...";  // HTML para notificar sobre cookies
-            return ResponseEntity.ok().header("Content-Type", "text/html").body(html);
-            */
-            
-            /* OPCIÓN 2: Procesar tokens aquí y redirigir con datos del usuario
-            String redirectUri = "http://localhost:8080/api/auth/google/callback";
-            TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(code, redirectUri);
-            
-            String idTokenString = tokenResponse.get("id_token").toString();
-            String accessToken = tokenResponse.getAccessToken();
-            String refreshToken = tokenResponse.getRefreshToken();
-            
-            User user = googleAuthService.authenticateUser(idTokenString, accessToken, refreshToken);
-            
-            if (user != null) {
-                // Crear un token temporal o JWT para enviar al frontend
-                String userDataJson = URLEncoder.encode(
-                    "{\"id\":\"" + user.getId() + "\"," +
-                    "\"email\":\"" + user.getEmail() + "\"," +
-                    "\"name\":\"" + user.getName() + "\"," +
-                    "\"picture\":\"" + user.getPicture() + "\"," +
-                    "\"emailVerified\":" + user.isEmailVerified() + "}", 
-                    StandardCharsets.UTF_8
-                );
-                
-                String redirectUrl = "http://localhost:4200/home?success=true&user=" + userDataJson;
-                
-                String html = "<!DOCTYPE html>\n" +
-                    "<html>\n" +
-                    "<head><title>Autenticación exitosa</title></head>\n" +
-                    "<body>\n" +
-                    "<h1>Autenticación exitosa</h1>\n" +
-                    "<p>Redirigiendo...</p>\n" +
-                    "<script>\n" +
-                    "if (window.opener) {\n" +
-                    "  window.opener.postMessage({success: true, user: " + 
-                        "{id: '" + user.getId() + "', email: '" + user.getEmail() + "', " +
-                        "name: '" + user.getName() + "', picture: '" + user.getPicture() + "', " +
-                        "emailVerified: " + user.isEmailVerified() + "}}, '*');\n" +
-                    "  window.close();\n" +
-                    "} else {\n" +
-                    "  window.location.href = '" + redirectUrl + "';\n" +
-                    "}\n" +
-                    "</script>\n" +
-                    "</body>\n" +
-                    "</html>";
-                
-                return ResponseEntity.ok().header("Content-Type", "text/html").body(html);
-            } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Error al procesar la autenticación");
-            }
-            */
             
         } catch (Exception e) {
-            logger.severe(" Error en callback: " + e.getMessage());
+            logger.severe("Error en callback: " + e.getMessage());
             e.printStackTrace();
             
             String errorType = "server_error";
             
-            // Mejorar diagnóstico de errores
+            // Diagnóstico de errores
             if (e.getMessage().contains("401")) {
                 errorType = "client_secret_error";
-                logger.severe(" Posible problema: Client Secret incorrecto o faltante");
+                logger.severe("Posible problema: Client Secret incorrecto o faltante");
             } else if (e.getMessage().contains("redirect_uri")) {
                 errorType = "redirect_uri_error";
-                logger.severe(" Posible problema: redirect_uri no autorizado en Google Console");
+                logger.severe("Posible problema: redirect_uri no autorizado en Google Console");
             }
             
-            // Redirección directa al frontend con error
+            // Redirección al frontend con error
             return ResponseEntity.status(HttpStatus.FOUND)
                 .header("Location", "http://localhost:4200/home?auth=error&type=" + errorType)
                 .build();
         }
     }
 
-    //  Endpoint para obtener eventos del calendario
-    @CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.OPTIONS})
     @GetMapping("/calendar/events/{userEmail}")
     public ResponseEntity<Object> getCalendarEvents(@PathVariable String userEmail) {
         try {
             String accessToken = googleAuthService.getAccessToken(userEmail);
             if (accessToken == null) {
-                logger.warning(" Access Token no encontrado para el usuario: " + userEmail);
+                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new Object() {
                         public final boolean success = false;
@@ -329,7 +185,7 @@ public class AuthController {
                     });
             }
 
-            logger.info("📅 Obteniendo eventos del calendario para: " + userEmail);
+            logger.info("Obteniendo eventos del calendario para: " + userEmail);
             List<String> events = googleAuthService.listCalendarEvents(accessToken);
             
             final String email = userEmail;
@@ -346,15 +202,10 @@ public class AuthController {
                 public final String note = "Mostrando próximos " + count + " eventos";
             };
             
-            return ResponseEntity.ok()
-                .header("Content-Type", "application/json")
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-                .header("Access-Control-Allow-Headers", "*")
-                .body(response);
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            logger.severe("❌ Error al obtener eventos del calendario: " + e.getMessage());
+            logger.severe("Error al obtener eventos del calendario: " + e.getMessage());
             e.printStackTrace();
             
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -365,44 +216,221 @@ public class AuthController {
         }
     }
 
-    //  Endpoint para verificar tokens almacenados
-    @GetMapping("/tokens/{userEmail}")
-    public ResponseEntity<Object> getUserTokens(@PathVariable String userEmail) {
+    @GetMapping("/drive/files/{userEmail}")
+    public ResponseEntity<Object> getDriveFiles(@PathVariable String userEmail) {
         try {
             String accessToken = googleAuthService.getAccessToken(userEmail);
-            String refreshToken = googleAuthService.getRefreshToken(userEmail);
-            
             if (accessToken == null) {
-                logger.warning(" Tokens no encontrados para el usuario: " + userEmail);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new Object() {
                         public final boolean success = false;
-                        public final String message = "No se encontraron tokens para el usuario: " + userEmail;
+                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
+                        public final String user = userEmail;
                     });
             }
+
+            logger.info("Obteniendo archivos de Google Drive para: " + userEmail);
+            List<String> files = googleAuthService.listDriveFiles(accessToken);
             
-            // Devolver información de tokens (sin exponer tokens completos)
             final String email = userEmail;
-            final String accessPreview = accessToken.substring(0, Math.min(20, accessToken.length())) + "...";
-            final boolean hasRefresh = refreshToken != null;
-            final String refreshPreview = refreshToken != null ? 
-                refreshToken.substring(0, Math.min(20, refreshToken.length())) + "..." : null;
+            final List<String> driveFiles = files;
+            final int count = files.size();
             
-            Object tokenResponse = new Object() {
+            Object response = new Object() {
                 public final boolean success = true;
-                public final String message = "Tokens encontrados y disponibles";
+                public final String message = "Archivos de Google Drive obtenidos exitosamente";
                 public final String userEmail = email;
-                public final String accessTokenPreview = accessPreview;
-                public final boolean hasRefreshToken = hasRefresh;
-                public final String refreshTokenPreview = refreshPreview;
+                public final int fileCount = count;
+                public final List<String> files = driveFiles;
+                public final long timestamp = System.currentTimeMillis();
+                public final String note = "Mostrando últimos " + count + " archivos";
+            };
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.severe("Error al obtener archivos de Google Drive: " + e.getMessage());
+            e.printStackTrace();
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new Object() {
+                    public final boolean success = false;
+                    public final String message = "Error interno del servidor: " + e.getMessage();
+                });
+        }
+    }
+
+    @PostMapping("/calendar/events/{userEmail}")
+    public ResponseEntity<Object> createCalendarEvent(@PathVariable String userEmail,
+                                                     @RequestParam String summary,
+                                                     @RequestParam String description,
+                                                     @RequestParam String startDateTime,
+                                                     @RequestParam String endDateTime) {
+        try {
+            String accessToken = googleAuthService.getAccessToken(userEmail);
+            if (accessToken == null) {
+                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new Object() {
+                        public final boolean success = false;
+                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
+                        public final String user = userEmail;
+                    });
+            }
+
+            logger.info("Creando evento en Google Calendar para: " + userEmail);
+            List<String> result = googleAuthService.createCalendarEvent(accessToken, summary, description, startDateTime, endDateTime);
+            
+            final String email = userEmail;
+            final List<String> eventResult = result;
+            
+            Object response = new Object() {
+                public final boolean success = true;
+                public final String message = "Evento creado exitosamente";
+                public final String userEmail = email;
+                public final List<String> result = eventResult;
                 public final long timestamp = System.currentTimeMillis();
             };
             
-            logger.info(" Información de tokens devuelta para usuario: " + userEmail);
-            return ResponseEntity.ok(tokenResponse);
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            logger.severe("Error al obtener tokens del usuario: " + e.getMessage());
+            logger.severe("Error al crear evento en Google Calendar: " + e.getMessage());
+            e.printStackTrace();
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new Object() {
+                    public final boolean success = false;
+                    public final String message = "Error interno del servidor: " + e.getMessage();
+                });
+        }
+    }
+
+    @GetMapping("/tasks/{userEmail}")
+    public ResponseEntity<Object> getTasks(@PathVariable String userEmail) {
+        try {
+            String accessToken = googleAuthService.getAccessToken(userEmail);
+            if (accessToken == null) {
+                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new Object() {
+                        public final boolean success = false;
+                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
+                        public final String user = userEmail;
+                    });
+            }
+
+            logger.info("Obteniendo tareas de Google Tasks para: " + userEmail);
+            List<String> tasks = googleAuthService.listTasks(accessToken);
+            
+            final String email = userEmail;
+            final List<String> taskList = tasks;
+            final int count = tasks.size();
+            
+            Object response = new Object() {
+                public final boolean success = true;
+                public final String message = "Tareas obtenidas exitosamente";
+                public final String userEmail = email;
+                public final int taskCount = count;
+                public final List<String> tasks = taskList;
+                public final long timestamp = System.currentTimeMillis();
+                public final String note = "Mostrando tareas de todas las listas";
+            };
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.severe("Error al obtener tareas: " + e.getMessage());
+            e.printStackTrace();
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new Object() {
+                    public final boolean success = false;
+                    public final String message = "Error interno del servidor: " + e.getMessage();
+                });
+        }
+    }
+
+    @PostMapping("/tasks/{userEmail}")
+    public ResponseEntity<Object> createTask(@PathVariable String userEmail,
+                                           @RequestParam String title,
+                                           @RequestParam(required = false) String notes,
+                                           @RequestParam(required = false) String dueDate) {
+        try {
+            String accessToken = googleAuthService.getAccessToken(userEmail);
+            if (accessToken == null) {
+                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new Object() {
+                        public final boolean success = false;
+                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
+                        public final String user = userEmail;
+                    });
+            }
+
+            logger.info("Creando tarea en Google Tasks para: " + userEmail);
+            List<String> result = googleAuthService.createTask(accessToken, title, notes != null ? notes : "", dueDate);
+            
+            final String email = userEmail;
+            final List<String> taskResult = result;
+            
+            Object response = new Object() {
+                public final boolean success = true;
+                public final String message = "Tarea creada exitosamente";
+                public final String userEmail = email;
+                public final List<String> result = taskResult;
+                public final long timestamp = System.currentTimeMillis();
+            };
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.severe("Error al crear tarea: " + e.getMessage());
+            e.printStackTrace();
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new Object() {
+                    public final boolean success = false;
+                    public final String message = "Error interno del servidor: " + e.getMessage();
+                });
+        }
+    }
+
+    @PutMapping("/tasks/{userEmail}/{taskId}")
+    public ResponseEntity<Object> updateTaskStatus(@PathVariable String userEmail,
+                                                  @PathVariable String taskId,
+                                                  @RequestParam String status) {
+        try {
+            String accessToken = googleAuthService.getAccessToken(userEmail);
+            if (accessToken == null) {
+                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new Object() {
+                        public final boolean success = false;
+                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
+                        public final String user = userEmail;
+                    });
+            }
+
+            logger.info("Actualizando estado de tarea en Google Tasks para: " + userEmail);
+            List<String> result = googleAuthService.updateTaskStatus(accessToken, taskId, status);
+            
+            final String email = userEmail;
+            final List<String> updateResult = result;
+            
+            Object response = new Object() {
+                public final boolean success = true;
+                public final String message = "Estado de tarea actualizado exitosamente";
+                public final String userEmail = email;
+                public final List<String> result = updateResult;
+                public final long timestamp = System.currentTimeMillis();
+            };
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.severe("Error al actualizar tarea: " + e.getMessage());
             e.printStackTrace();
             
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -416,17 +444,22 @@ public class AuthController {
     @GetMapping("/info")
     public ResponseEntity<Object> getApiInfo() {
         return ResponseEntity.ok(new Object() {
-            public final String version = "1.0.0";
-            public final String description = "API de autenticación con Google";
+            public final String version = "3.0.0";
+            public final String description = "API de autenticación con Google y servicios integrados (Calendar, Drive, Tasks)";
             public final String[] endpoints = {
                 "POST /api/auth/google - Autenticar con código de autorización",
-                "POST /api/auth/google/cookie - Autenticar usando cookie HTTPOnly (más seguro)",
                 "GET /api/auth/google/callback - Callback de Google OAuth",
                 "GET /api/auth/status - Verificar estado de la API",
                 "GET /api/auth/info - Información de la API",
-                "GET /api/auth/calendar/events/{userEmail} - Listar eventos del calendario para un usuario (requiere Access Token almacenado)"
+                "GET /api/auth/calendar/events/{userEmail} - Listar eventos del calendario",
+                "POST /api/auth/calendar/events/{userEmail} - Crear evento en el calendario",
+                "GET /api/auth/drive/files/{userEmail} - Listar archivos de Google Drive",
+                "GET /api/auth/tasks/{userEmail} - Listar tareas de Google Tasks",
+                "POST /api/auth/tasks/{userEmail} - Crear tarea en Google Tasks",
+                "PUT /api/auth/tasks/{userEmail}/{taskId} - Actualizar estado de tarea"
             };
             public final String usage = "Envía un POST a /api/auth/google con un JSON: {'code': 'authorization_code'}";
+            public final String note = "Los endpoints de Google Services requieren autenticación previa";
         });
     }
 }
