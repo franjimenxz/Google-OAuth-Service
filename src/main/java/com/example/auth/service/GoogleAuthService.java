@@ -240,10 +240,8 @@ public class GoogleAuthService {
                         folder.setChildren(new ArrayList<>());
                         folderMap.put(id, folder);
                         
-                        // Si es carpeta raíz (sin padres o padre es root), agregar a rootItems
-                        if (file.getParents() == null || file.getParents().isEmpty()) {
-                            rootItems.add(folder);
-                        }
+                        // Agregar todas las carpetas, sin filtrar por padre
+                        rootItems.add(folder);
                     }
                 }
                 
@@ -260,18 +258,17 @@ public class GoogleAuthService {
                         DriveFileDto fileDto = new DriveFileDto(id, name, mimeType, modifiedTime, size, "file");
                         
                         // Buscar carpeta padre
-                        boolean addedToFolder = false;
                         if (file.getParents() != null && !file.getParents().isEmpty()) {
                             String parentId = file.getParents().get(0);
                             DriveFileDto parentFolder = folderMap.get(parentId);
                             if (parentFolder != null) {
                                 parentFolder.getChildren().add(fileDto);
-                                addedToFolder = true;
+                            } else {
+                                // Si no encontramos el padre, agregarlo como archivo independiente
+                                rootItems.add(fileDto);
                             }
-                        }
-                        
-                        // Si no tiene padre conocido, es archivo raíz
-                        if (!addedToFolder) {
+                        } else {
+                            // Archivo sin padre, agregarlo a la raíz
                             rootItems.add(fileDto);
                         }
                     }
