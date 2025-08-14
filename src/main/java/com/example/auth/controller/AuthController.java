@@ -16,11 +16,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.example.auth.dto.AuthResponse;
 import com.example.auth.dto.CalendarEventDto;
 import com.example.auth.dto.DriveFileDto;
+import com.example.auth.dto.FileUploadRequest;
 import com.example.auth.dto.GoogleAuthRequest;
 import com.example.auth.dto.TaskDto;
 import com.example.auth.model.User;
@@ -266,7 +266,7 @@ public class AuthController {
 
     @PostMapping("/drive/upload/{userEmail}")
     public ResponseEntity<Object> uploadFileToDrive(@PathVariable String userEmail,
-                                                   @RequestParam("file") MultipartFile file) {
+                                                   @RequestBody FileUploadRequest uploadRequest) {
         try {
             String accessToken = googleAuthService.getAccessToken(userEmail);
             if (accessToken == null) {
@@ -279,19 +279,38 @@ public class AuthController {
                         });
             }
 
-            if (file.isEmpty()) {
+            if (uploadRequest.getFileContent() == null || uploadRequest.getFileContent().trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body(new Object() {
                             public final boolean success = false;
-                            public final String message = "No se ha seleccionado ningún archivo";
+                            public final String message = "No se ha proporcionado contenido de archivo (base64)";
+                        });
+            }
+
+            if (uploadRequest.getFileName() == null || uploadRequest.getFileName().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new Object() {
+                            public final boolean success = false;
+                            public final String message = "No se ha proporcionado nombre de archivo";
                         });
             }
 
             logger.info("Subiendo archivo a Google Drive para: " + userEmail);
             
-            String fileName = file.getOriginalFilename();
-            String mimeType = file.getContentType();
-            byte[] fileContent = file.getBytes();
+            // Decode base64 content
+            byte[] fileContent;
+            try {
+                fileContent = java.util.Base64.getDecoder().decode(uploadRequest.getFileContent());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                        .body(new Object() {
+                            public final boolean success = false;
+                            public final String message = "Contenido base64 inválido";
+                        });
+            }
+            
+            String fileName = uploadRequest.getFileName();
+            String mimeType = uploadRequest.getMimeType() != null ? uploadRequest.getMimeType() : "application/octet-stream";
             
             List<String> result = googleAuthService.uploadFileToDrive(accessToken, fileName, mimeType, fileContent);
 
@@ -302,8 +321,9 @@ public class AuthController {
                 public final boolean success = true;
                 public final String message = "Archivo subido exitosamente";
                 public final String userEmail = email;
-                public final String fileName = file.getOriginalFilename();
-                public final String fileSize = file.getSize() + " bytes";
+                public final String fileName = uploadRequest.getFileName();
+                public final String fileSize = fileContent.length + " bytes";
+                public final String mimeType = uploadRequest.getMimeType();
                 public final List<String> result = uploadResult;
                 public final long timestamp = System.currentTimeMillis();
             };
