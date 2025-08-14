@@ -38,12 +38,14 @@ API para autenticación con Google y consulta de Calendar, Drive y Tasks.
 - Body (JSON):
 ```json
 {
-  "fileName": "documento.pdf",
+  "fileName": "recibo_enero_2025.pdf",
   "mimeType": "application/pdf",
-  "fileContent": "JVBERi0xLjQKJdPr6eEKMSAwIG9iago8PAovVHlwZSAv..."
+  "fileContent": "JVBERi0xLjQKJdPr6eEKMSAwIG9iago8PAovVHlwZSAv...",
+  "folderId": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
 }
 ```
 - Nota: fileContent debe ser el archivo codificado en base64
+- Nota: folderId es opcional. Si no se especifica, se sube a la raíz de Drive
 
 ### Google Tasks
 

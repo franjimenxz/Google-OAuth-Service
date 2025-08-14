@@ -4,6 +4,7 @@ public class FileUploadRequest {
     private String fileName;
     private String mimeType;
     private String fileContent; // base64 encoded
+    private String folderId; // ID de carpeta de Drive (opcional)
 
     public FileUploadRequest() {
     }
@@ -12,6 +13,13 @@ public class FileUploadRequest {
         this.fileName = fileName;
         this.mimeType = mimeType;
         this.fileContent = fileContent;
+    }
+
+    public FileUploadRequest(String fileName, String mimeType, String fileContent, String folderId) {
+        this.fileName = fileName;
+        this.mimeType = mimeType;
+        this.fileContent = fileContent;
+        this.folderId = folderId;
     }
 
     public String getFileName() {
@@ -36,5 +44,13 @@ public class FileUploadRequest {
 
     public void setFileContent(String fileContent) {
         this.fileContent = fileContent;
+    }
+
+    public String getFolderId() {
+        return folderId;
+    }
+
+    public void setFolderId(String folderId) {
+        this.folderId = folderId;
     }
 }

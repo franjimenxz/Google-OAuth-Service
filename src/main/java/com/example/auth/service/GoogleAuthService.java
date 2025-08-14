@@ -242,7 +242,7 @@ public class GoogleAuthService {
         return fileList;
     }
 
-    public List<String> uploadFileToDrive(String accessTokenString, String fileName, String mimeType, byte[] fileContent) {
+    public List<String> uploadFileToDrive(String accessTokenString, String fileName, String mimeType, byte[] fileContent, String folderId) {
         List<String> result = new ArrayList<>();
         try {
             logger.info("Starting file upload to Google Drive");
@@ -264,6 +264,11 @@ public class GoogleAuthService {
             com.google.api.services.drive.model.File fileMetadata = 
                 new com.google.api.services.drive.model.File();
             fileMetadata.setName(fileName);
+            
+            // Set parent folder if specified
+            if (folderId != null && !folderId.trim().isEmpty()) {
+                fileMetadata.setParents(java.util.Collections.singletonList(folderId));
+            }
 
             // Create input stream from byte array
             java.io.ByteArrayInputStream inputStream = new java.io.ByteArrayInputStream(fileContent);

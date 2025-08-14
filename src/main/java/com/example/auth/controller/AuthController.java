@@ -311,8 +311,9 @@ public class AuthController {
             
             String fileName = uploadRequest.getFileName();
             String mimeType = uploadRequest.getMimeType() != null ? uploadRequest.getMimeType() : "application/octet-stream";
+            String folderId = uploadRequest.getFolderId(); // puede ser null
             
-            List<String> result = googleAuthService.uploadFileToDrive(accessToken, fileName, mimeType, fileContent);
+            List<String> result = googleAuthService.uploadFileToDrive(accessToken, fileName, mimeType, fileContent, folderId);
 
             final String email = userEmail;
             final List<String> uploadResult = result;
