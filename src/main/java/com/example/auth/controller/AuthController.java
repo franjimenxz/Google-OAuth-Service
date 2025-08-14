@@ -262,51 +262,6 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/calendar/events/{userEmail}")
-    public ResponseEntity<Object> createCalendarEvent(@PathVariable String userEmail,
-                                                     @RequestParam String summary,
-                                                     @RequestParam String description,
-                                                     @RequestParam String startDateTime,
-                                                     @RequestParam String endDateTime) {
-        try {
-            String accessToken = googleAuthService.getAccessToken(userEmail);
-            if (accessToken == null) {
-                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new Object() {
-                        public final boolean success = false;
-                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
-                        public final String user = userEmail;
-                    });
-            }
-
-            logger.info("Creando evento en Google Calendar para: " + userEmail);
-            List<String> result = googleAuthService.createCalendarEvent(accessToken, summary, description, startDateTime, endDateTime);
-            
-            final String email = userEmail;
-            final List<String> eventResult = result;
-            
-            Object response = new Object() {
-                public final boolean success = true;
-                public final String message = "Evento creado exitosamente";
-                public final String userEmail = email;
-                public final List<String> result = eventResult;
-                public final long timestamp = System.currentTimeMillis();
-            };
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            logger.severe("Error al crear evento en Google Calendar: " + e.getMessage());
-            e.printStackTrace();
-            
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new Object() {
-                    public final boolean success = false;
-                    public final String message = "Error interno del servidor: " + e.getMessage();
-                });
-        }
-    }
 
     @GetMapping("/tasks/{userEmail}")
     public ResponseEntity<Object> getTasks(@PathVariable String userEmail) {
@@ -353,114 +308,23 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/tasks/{userEmail}")
-    public ResponseEntity<Object> createTask(@PathVariable String userEmail,
-                                           @RequestParam String title,
-                                           @RequestParam(required = false) String notes,
-                                           @RequestParam(required = false) String dueDate) {
-        try {
-            String accessToken = googleAuthService.getAccessToken(userEmail);
-            if (accessToken == null) {
-                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new Object() {
-                        public final boolean success = false;
-                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
-                        public final String user = userEmail;
-                    });
-            }
-
-            logger.info("Creando tarea en Google Tasks para: " + userEmail);
-            List<String> result = googleAuthService.createTask(accessToken, title, notes != null ? notes : "", dueDate);
-            
-            final String email = userEmail;
-            final List<String> taskResult = result;
-            
-            Object response = new Object() {
-                public final boolean success = true;
-                public final String message = "Tarea creada exitosamente";
-                public final String userEmail = email;
-                public final List<String> result = taskResult;
-                public final long timestamp = System.currentTimeMillis();
-            };
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            logger.severe("Error al crear tarea: " + e.getMessage());
-            e.printStackTrace();
-            
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new Object() {
-                    public final boolean success = false;
-                    public final String message = "Error interno del servidor: " + e.getMessage();
-                });
-        }
-    }
-
-    @PutMapping("/tasks/{userEmail}/{taskId}")
-    public ResponseEntity<Object> updateTaskStatus(@PathVariable String userEmail,
-                                                  @PathVariable String taskId,
-                                                  @RequestParam String status) {
-        try {
-            String accessToken = googleAuthService.getAccessToken(userEmail);
-            if (accessToken == null) {
-                logger.warning("Access Token no encontrado para el usuario: " + userEmail);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new Object() {
-                        public final boolean success = false;
-                        public final String message = "No se encontró Access Token para el usuario. Por favor, autentícate primero.";
-                        public final String user = userEmail;
-                    });
-            }
-
-            logger.info("Actualizando estado de tarea en Google Tasks para: " + userEmail);
-            List<String> result = googleAuthService.updateTaskStatus(accessToken, taskId, status);
-            
-            final String email = userEmail;
-            final List<String> updateResult = result;
-            
-            Object response = new Object() {
-                public final boolean success = true;
-                public final String message = "Estado de tarea actualizado exitosamente";
-                public final String userEmail = email;
-                public final List<String> result = updateResult;
-                public final long timestamp = System.currentTimeMillis();
-            };
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            logger.severe("Error al actualizar tarea: " + e.getMessage());
-            e.printStackTrace();
-            
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new Object() {
-                    public final boolean success = false;
-                    public final String message = "Error interno del servidor: " + e.getMessage();
-                });
-        }
-    }
 
     @GetMapping("/info")
     public ResponseEntity<Object> getApiInfo() {
         return ResponseEntity.ok(new Object() {
-            public final String version = "3.0.0";
-            public final String description = "API de autenticación con Google y servicios integrados (Calendar, Drive, Tasks)";
+            public final String version = "2.1.0";
+            public final String description = "API de autenticación con Google y consulta de servicios (Calendar, Drive, Tasks)";
             public final String[] endpoints = {
                 "POST /api/auth/google - Autenticar con código de autorización",
                 "GET /api/auth/google/callback - Callback de Google OAuth",
                 "GET /api/auth/status - Verificar estado de la API",
                 "GET /api/auth/info - Información de la API",
                 "GET /api/auth/calendar/events/{userEmail} - Listar eventos del calendario",
-                "POST /api/auth/calendar/events/{userEmail} - Crear evento en el calendario",
                 "GET /api/auth/drive/files/{userEmail} - Listar archivos de Google Drive",
-                "GET /api/auth/tasks/{userEmail} - Listar tareas de Google Tasks",
-                "POST /api/auth/tasks/{userEmail} - Crear tarea en Google Tasks",
-                "PUT /api/auth/tasks/{userEmail}/{taskId} - Actualizar estado de tarea"
+                "GET /api/auth/tasks/{userEmail} - Listar tareas de Google Tasks"
             };
             public final String usage = "Envía un POST a /api/auth/google con un JSON: {'code': 'authorization_code'}";
-            public final String note = "Los endpoints de Google Services requieren autenticación previa";
+            public final String note = "Solo endpoints de consulta (GET). Los endpoints requieren autenticación previa";
         });
     }
 }

@@ -1,6 +1,6 @@
 # Google Services API
 
-API para autenticación con Google y gestión de Calendar, Drive y Tasks.
+API para autenticación con Google y consulta de Calendar, Drive y Tasks.
 
 ## Endpoints Disponibles
 
@@ -27,16 +27,6 @@ API para autenticación con Google y gestión de Calendar, Drive y Tasks.
 - Descripción: Listar próximos eventos del calendario
 - Ejemplo: `/api/auth/calendar/events/juan@empresa.com`
 
-**POST** `/api/auth/calendar/events/{userEmail}`
-- Descripción: Crear nuevo evento en el calendario
-- Body (form-data):
-```
-summary: Reunión de equipo
-description: Reunión semanal de desarrollo
-startDateTime: 2025-08-15T10:00:00-03:00
-endDateTime: 2025-08-15T11:00:00-03:00
-```
-
 ### Google Drive
 
 **GET** `/api/auth/drive/files/{userEmail}`
@@ -49,24 +39,6 @@ endDateTime: 2025-08-15T11:00:00-03:00
 - Descripción: Listar todas las tareas del usuario
 - Ejemplo: `/api/auth/tasks/juan@empresa.com`
 
-**POST** `/api/auth/tasks/{userEmail}`
-- Descripción: Crear nueva tarea
-- Body (form-data):
-```
-title: Revisar código del proyecto
-notes: Hacer code review antes del viernes
-dueDate: 2025-08-16T18:00:00-03:00
-```
-Nota: Solo `title` es obligatorio, `notes` y `dueDate` son opcionales.
-
-**PUT** `/api/auth/tasks/{userEmail}/{taskId}`
-- Descripción: Actualizar estado de una tarea
-- Body (form-data):
-```
-status: completed
-```
-Nota: Para obtener el taskId, primero hacer GET a `/tasks/{userEmail}`
-
 ### Información
 
 **GET** `/api/auth/info`
@@ -75,9 +47,8 @@ Nota: Para obtener el taskId, primero hacer GET a `/tasks/{userEmail}`
 ## Como usar
 
 1. **Autenticarse**: Hacer POST a `/api/auth/google` con el código de OAuth
-2. **Usar servicios**: Una vez autenticado, usar cualquier endpoint con tu email
-3. **Formato fechas**: Usar formato ISO 8601: `2025-08-15T10:00:00-03:00`
-4. **Parámetros POST**: Usar form-data o x-www-form-urlencoded en Postman
+2. **Consultar servicios**: Una vez autenticado, usar cualquier endpoint GET con tu email
+3. **Solo lectura**: Esta API permite únicamente consultar datos, no modificarlos
 
 ## Notas importantes
 
@@ -85,6 +56,7 @@ Nota: Para obtener el taskId, primero hacer GET a `/tasks/{userEmail}`
 - El email usado en la URL debe coincidir con el usuario autenticado
 - Los tokens se guardan en memoria, se pierden al reiniciar la aplicación
 - Para usar Tasks, Calendar y Drive, asegúrate de que las APIs estén habilitadas en Google Cloud Console
+- Solo permisos de lectura: no se pueden crear/modificar datos, solo consultarlos
 
 ## Ejecutar proyecto
 
