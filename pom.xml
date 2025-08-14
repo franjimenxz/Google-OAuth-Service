@@ -81,7 +81,7 @@
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-tasks</artifactId>
-            <version>v1-rev20220627-2.0.0</version>
+            <version>v1-rev20210709-2.0.0</version>
         </dependency>
 
         <!-- Spring Boot Test -->

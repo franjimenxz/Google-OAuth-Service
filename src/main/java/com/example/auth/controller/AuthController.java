@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -46,7 +47,7 @@ public class AuthController {
 
             // Define the redirect URI used in the frontend for the authorization code flow
             // This MUST match the Authorized Redirect URI configured in Google Cloud Console
-            String redirectUri = "https://5395b45c15ea.ngrok-free.app/api/auth/google/callback";
+            String redirectUri = "http://localhost:8080/api/auth/google/callback";
 
             // Exchange authorization code for tokens
             TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(request.getCode(), redirectUri);
@@ -111,7 +112,7 @@ public class AuthController {
             logger.info("Callback recibido - Procesando autenticación");
             
             // Procesar autenticación
-            String redirectUri = "https://5395b45c15ea.ngrok-free.app/api/auth/google/callback";
+            String redirectUri = "http://localhost:8080/api/auth/google/callback";
             logger.info("Usando redirect_uri: " + redirectUri);
             TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(code, redirectUri);
             
@@ -136,7 +137,7 @@ public class AuthController {
                 
                 // Redirección al frontend con datos del usuario
                 return ResponseEntity.status(HttpStatus.FOUND)
-                    .header("Location", "http://localhost:4200/home" + userParams)
+                    .header("Location", "https://test-api-google.netlify.app/home" + userParams)
                     .build();
                 
             } else {
@@ -144,7 +145,7 @@ public class AuthController {
                 
                 // Redirección al frontend con error
                 return ResponseEntity.status(HttpStatus.FOUND)
-                    .header("Location", "http://localhost:4200/home?auth=error&message=token_verification_failed")
+                    .header("Location", "https://test-api-google.netlify.app/home?auth=error&message=token_verification_failed")
                     .build();
             }
             
@@ -166,7 +167,7 @@ public class AuthController {
             
             // Redirección al frontend con error
             return ResponseEntity.status(HttpStatus.FOUND)
-                .header("Location", "http://localhost:4200/home?auth=error&type=" + errorType)
+                .header("Location", "https://test-api-google.netlify.app/home?auth=error&type=" + errorType)
                 .build();
         }
     }

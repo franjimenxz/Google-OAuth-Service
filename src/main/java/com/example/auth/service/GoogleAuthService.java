@@ -325,14 +325,14 @@ public class GoogleAuthService {
                     // Get tasks from this list
                     com.google.api.services.tasks.model.Tasks tasks = service.tasks()
                         .list(taskListItem.getId())
-                        .setMaxResults(10L)
+                        .setMaxResults(10)
                         .execute();
                     
                     if (tasks.getItems() != null) {
                         for (com.google.api.services.tasks.model.Task task : tasks.getItems()) {
                             String title = task.getTitle();
                             String status = task.getStatus();
-                            String dueDate = task.getDue() != null ? task.getDue().toString() : "Sin fecha";
+                            String dueDate = task.getDue() != null ? task.getDue() : "Sin fecha";
                             
                             taskList.add("  - " + title + " (" + status + ") - Vence: " + dueDate);
                         }
@@ -386,7 +386,7 @@ public class GoogleAuthService {
             if (dueDate != null && !dueDate.trim().isEmpty()) {
                 try {
                     com.google.api.client.util.DateTime due = new com.google.api.client.util.DateTime(dueDate);
-                    task.setDue(due);
+                    task.setDue(due.toStringRfc3339());
                 } catch (Exception e) {
                     logger.warning("Formato de fecha inválido, creando tarea sin fecha de vencimiento");
                 }
@@ -436,7 +436,7 @@ public class GoogleAuthService {
             task.setStatus(status);
             
             if ("completed".equals(status)) {
-                task.setCompleted(new com.google.api.client.util.DateTime(System.currentTimeMillis()));
+                task.setCompleted(new com.google.api.client.util.DateTime(System.currentTimeMillis()).toStringRfc3339());
             }
 
             task = service.tasks().update(taskListId, taskId, task).execute();
