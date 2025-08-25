@@ -1,6 +1,7 @@
 package com.example.auth.service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,6 +10,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
+import com.google.api.services.drive.model.File;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -548,6 +550,87 @@ public class GoogleAuthService {
             result.add("Error al actualizar tarea: " + e.getMessage());
         }
         return result;
+    }
+
+    public InputStream downloadDriveFileAsInputStream(String accessTokenString, String fileId) throws IOException { //descarga el contenido de un archivo de drive y devuelve como flujo de datos
+        logger.info("Descargando archivo de Google Drive con ID: " + fileId);
+
+        // Build credentials with the access token
+        AccessToken accessToken = new AccessToken(accessTokenString, null);
+        GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+
+        // Build Drive service
+        com.google.api.services.drive.Drive service =
+                new com.google.api.services.drive.Drive.Builder(
+                        new NetHttpTransport(),
+                        GsonFactory.getDefaultInstance(),
+                        new HttpCredentialsAdapter(credentials))
+                        .setApplicationName("Google Auth API")
+                        .build();
+
+        // The method `get` returns the content of the file
+        com.google.api.client.http.HttpResponse httpResponse = service.files()
+                .get(fileId)
+                .executeMedia(); //binary file
+
+        // We return the InputStream of the content
+        return httpResponse.getContent();
+    }
+
+    public File uploadSignedPdfToDrive(String accessTokenString, String fileName, byte[] fileContent, String parentFolderId) throws IOException { //metodo que sube el recibo firmado al drive
+        logger.info("Subiendo PDF firmado a Google Drive");
+
+        // Build credentials with the access token
+        AccessToken accessToken = new AccessToken(accessTokenString, null);
+        GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+
+        // Build Drive service
+        com.google.api.services.drive.Drive service =
+                new com.google.api.services.drive.Drive.Builder(
+                        new NetHttpTransport(),
+                        GsonFactory.getDefaultInstance(),
+                        new HttpCredentialsAdapter(credentials))
+                        .setApplicationName("Google Auth API")
+                        .build();
+
+        // Create file metadata
+        com.google.api.services.drive.model.File fileMetadata =
+                new com.google.api.services.drive.model.File();
+        fileMetadata.setName(fileName);
+        fileMetadata.setMimeType("application/pdf");
+
+        // Set parent folder if specified
+        if (parentFolderId != null && !parentFolderId.trim().isEmpty()) {
+            fileMetadata.setParents(java.util.Collections.singletonList(parentFolderId));
+        }
+
+        // Create input stream from byte array
+        java.io.ByteArrayInputStream inputStream = new java.io.ByteArrayInputStream(fileContent);
+        com.google.api.client.http.InputStreamContent mediaContent =
+                new com.google.api.client.http.InputStreamContent("application/pdf", inputStream);
+
+        // Upload file
+        return service.files()
+                .create(fileMetadata, mediaContent)
+                .setFields("id, name, size")
+                .execute();
+    }
+
+    public String getFileNameFromId(String accesTokenString, String fileId) throws IOException { //metódo que da nombre de algún archivo de drive
+        logger.info("Obteniendo el nombre del archivo con ID: " + fileId);
+        AccessToken accessToken = new AccessToken(accesTokenString, null);
+        GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+        com.google.api.services.drive.Drive service=
+                new com.google.api.services.drive.Drive.Builder(
+                        new NetHttpTransport(),
+                        GsonFactory.getDefaultInstance(),
+                        new HttpCredentialsAdapter(credentials))
+                        .setApplicationName("Google Auth API")
+                        .build();
+        com.google.api.services.drive.model.File file = service.files().get(fileId)
+                .setFields("name")
+                .execute();
+        return file.getName();
     }
 }
 
