@@ -48,6 +48,17 @@ API para autenticación con Google y consulta de Calendar, Drive y Tasks.
 - Nota: fileContent debe ser el archivo codificado en base64
 - Nota: folderId es opcional. Si no se especifica, se sube a la raíz de Drive
 
+**POST** `/api/pdf/sign-from-drive/{userEmail}`
+- Descripción: Firmar el recibo de sueldo almacenado en Google Drive
+- Body (JSON):
+```json
+{
+  "pdfFileId": "1Vs-sICz4Z_hy5X8n4IhxnU8lqaS-omCU",
+  "signatureFileId": "10Lw8c8KN_RlpNxMv9RhC4T1fbS1L2_zw",
+  "parentFolderId": "1OyjaxcmOf8bIgbAn00nChC7nfAZc1dKb"
+}
+```
+
 ### Google Tasks
 
 **GET** `/api/auth/tasks/{userEmail}`
@@ -65,6 +76,7 @@ API para autenticación con Google y consulta de Calendar, Drive y Tasks.
 1. **Autenticarse**: Hacer POST a `/api/auth/google` con el código de OAuth
 2. **Consultar servicios**: Una vez autenticado, usar cualquier endpoint GET con tu email
 3. **Subir archivos**: Usar POST `/drive/upload/{userEmail}` con JSON y archivo en base64
+4. **Firmar PDF como el recibo de sueldo**: Usar POST /api/pdf/sign-from-drive/{userEmail} con los IDs del PDF y la firma
 
 ## Notas importantes
 
