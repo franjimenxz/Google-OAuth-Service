@@ -275,7 +275,7 @@ public class AuthController {
             User user = (User) session.getAttribute("user");
             String accessToken = (String) session.getAttribute("accessToken");
 
-            if (user != null || accessToken != null) {
+            if (user == null || accessToken == null) {
                 logger.warning("No hay seesion activa o acces token no encontrado");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(new Object() {
@@ -325,7 +325,7 @@ public class AuthController {
             User user = (User) session.getAttribute("user");
             String accessToken = (String) session.getAttribute("accessToken");
 
-            if (user != null || accessToken != null) {
+            if (user == null || accessToken == null) {
                 logger.warning("No hay seesion activa o acces token no encontrado");
 
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
