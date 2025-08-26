@@ -10,10 +10,10 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("*")
+                .allowedOriginPatterns("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(false) // Set to true if you need to send cookies or HTTP authentication
+                .allowCredentials(true) // Set to true if you need to send cookies or HTTP authentication
                 .maxAge(3600);
     }
 }

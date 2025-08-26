@@ -10,12 +10,14 @@ com/example/auth/controller/AuthController$1.class
 com/example/auth/controller/AuthController$17.class
 com/example/auth/controller/AuthController$14.class
 com/example/auth/controller/AuthController$9.class
+com/example/auth/service/PdfService.class
 com/example/auth/controller/AuthController$13.class
 com/example/auth/controller/AuthController$4.class
 com/example/auth/dto/AuthResponse.class
 com/example/auth/model/User.class
 com/example/auth/controller/AuthController$11.class
 com/example/auth/controller/AuthController$2.class
+com/example/auth/controller/PdfController.class
 com/example/auth/controller/AuthController.class
 com/example/auth/controller/AuthController$16.class
 com/example/auth/controller/AuthController$15.class
