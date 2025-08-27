@@ -150,7 +150,7 @@ public class AuthController {
                 // Redirección al frontend con datos del usuario
                 return ResponseEntity.status(HttpStatus.FOUND)
                   //  .header("Location", "https://test-api-google.netlify.app/home" + userParams)
-                        .header("Location", "https://test-api-google.netlify.app/home?auth=success")
+                        .header("Location", "http://localhost:4200/dashboard?auth=success")
                     .build();
                 
             } else {
@@ -158,7 +158,7 @@ public class AuthController {
                 
                 // Redirección al frontend con error
                 return ResponseEntity.status(HttpStatus.FOUND)
-                    .header("Location", "https://test-api-google.netlify.app/home?auth=error&message=token_verification_failed")
+                    .header("Location", "http://localhost:4200/dashboard?auth=error&message=token_verification_failed")
                     .build();
             }
             
@@ -180,42 +180,49 @@ public class AuthController {
             
             // Redirección al frontend con error
             return ResponseEntity.status(HttpStatus.FOUND)
-                .header("Location", "https://test-api-google.netlify.app/home?auth=error&type=" + errorType)
+                .header("Location", "http://localhost:4200/dashboard?auth=error&type=" + errorType)
                 .build();
         }
     }
     //IMPLEMENTAR LOGOUT
+    @PostMapping("/logout") public ResponseEntity<Object> logout(HttpServletRequest request) {
+        try{
+            HttpSession session = request.getSession(false); //el parametro false evita que se cree una sesion nueva si no existe dicha sesion
+            if(session != null ) {
+                //Se debe agregar ademas un checkeo de access token de Google?
+                session.invalidate(); //La sesion deja de ser valida y ademas se elimina
+            } return ResponseEntity.ok().body("Cierre de sesion realizado correctamente.");
+        } catch (Exception e){
+            logger.severe("Error al logout: " + e.getMessage()); e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new Object() {
+                        public final boolean success = false;
+                        public final String message = "Error interno del servidor: " + e.getMessage(); }); }
+    }
 
 
     // Endpoint para obtener si se logueo el usuario y retornar data
     @GetMapping("/me")
-    public ResponseEntity<Object> getCurrentUser(HttpSession session) {
-        try {
-            User user = (User) session.getAttribute("user");
-
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new Object() {
-                                public final boolean success = false;
-                                public final String message = "No hay sesion activa";
-                        });
-            }
-            return ResponseEntity.ok(new Object() {
-                public final boolean success = true;
-                public final String message = "Usuario con sesion activa";
-                public final User user = (User) session.getAttribute("user");
-                public final long timestamp = System.currentTimeMillis();
-                                     });
-        } catch (Exception e) {
-            logger.severe("Error obteniendo el usuario" + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new Object() {
-                        public final boolean success = false;
-                        public final String message = "Error" + e.getMessage();
-                    });
+    public ResponseEntity<Object> getCurrentUser(HttpServletRequest request) {
+        HttpSession session = request.getSession(false); // NO crea
+        if (session == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new Object(){ public final boolean success=false; public final String message="No hay sesion activa";});
         }
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new Object(){ public final boolean success=false; public final String message="No hay sesion activa";});
+        }
+        final User u = user;
+        return ResponseEntity.ok(new Object(){
+            public final boolean success=true;
+            public final String message="Usuario con sesion activa";
+            public final User user=u;
+            public final long timestamp=System.currentTimeMillis();
+        });
     }
+
 
     @GetMapping("/calendar/events")
     public ResponseEntity<Object> getCalendarEvents(HttpSession session) {
@@ -400,7 +407,7 @@ public class AuthController {
         }
     }
 
-    @GetMapping("/tasks/")
+    @GetMapping("/tasks")
     public ResponseEntity<Object> getTasks(HttpSession session) {
         try {
            // String accessToken = googleAuthService.getAccessToken(userEmail);
