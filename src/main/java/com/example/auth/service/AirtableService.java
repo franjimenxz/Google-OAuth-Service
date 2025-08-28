@@ -2,6 +2,7 @@ package com.example.auth.service;
 
 import com.example.auth.model.AirtableCreateRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -40,5 +41,20 @@ public class AirtableService {
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(String.class); // o un DTO de respuesta si querés
+    }
+
+
+    public Mono<Map<String, Object>> getAllRecords() {
+        return client.get()
+                .uri(uriBuilder -> uriBuilder.pathSegment(baseId, tableIdOrName).build())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {});
+    }
+    // 🔹 GET por ID específico
+    public Mono<String> getRecordById(String recordId) {
+        return client.get()
+                .uri("/{base}/{table}/{id}", baseId, tableIdOrName, recordId)
+                .retrieve()
+                .bodyToMono(String.class);
     }
 }
