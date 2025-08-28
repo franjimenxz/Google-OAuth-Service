@@ -1,8 +1,12 @@
 package com.example.auth.controller;
 
+import com.example.auth.model.User;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import com.example.auth.service.GoogleAuthService;
 import com.example.auth.service.PdfService;
+import com.example.auth.model.User;
+
 import com.google.api.services.drive.model.File;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,21 +32,24 @@ public class PdfController {
     @Autowired
     private PdfService pdfService;
 
-    @PostMapping("/sign-from-drive/{userEmail}")
+    @PostMapping("/sign-from-drive")
     public ResponseEntity<Map<String, String>> signPdfFromDrive(
-            @PathVariable String userEmail,
+           // @PathVariable String userEmail,HttpSession session,
             @RequestParam("pdfFileId") String pdfFileId, //Id de PDF
             @RequestParam("signatureFileId") String signatureFileId, //Id de firma
-            @RequestParam(value = "parentFolderId", required = false) String parentFolderId) { //Id de carpeta donde quiero guardar el recibo firmado
+            @RequestParam(value = "parentFolderId", required = false) String parentFolderId,
+           HttpSession session) { //Id de carpeta donde quiero guardar el recibo firmado
 
         if (signatureFileId == null || signatureFileId.isEmpty()) {
             return ResponseEntity.badRequest().body(Collections.singletonMap("message", "Falta el ID del archivo de la firma."));
         }
+        User user = (User) session.getAttribute("user");
 
-        String accessToken = googleAuthService.getAccessToken(userEmail);
-        if (accessToken == null) {
+        String accessToken = (String) session.getAttribute("accessToken");
+
+        if (user == null || accessToken == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Collections.singletonMap("message", "Usuario no autenticado."));
+                    .body(Collections.singletonMap("message", "No hay sesion activa o usuario no autenticado."));
         }
 
         logger.info("Iniciando proceso de firma para el archivo de Drive: " + pdfFileId);
