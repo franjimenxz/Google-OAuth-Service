@@ -6,14 +6,18 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
-
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOriginPatterns("*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true) // Set to true if you need to send cookies or HTTP authentication
-                .maxAge(3600);
+        @Override
+        public void addCorsMappings(CorsRegistry registry) {
+            registry.addMapping("/**")
+                    .allowedOrigins(
+                            "https://test-api-google.netlify.app", // ← poné tu URL real
+                            "http://localhost:4200"       // dev
+                    )
+                    .allowedMethods("GET","POST","PUT","DELETE","OPTIONS")
+                    .allowedHeaders("Content-Type","Authorization")
+                    .allowCredentials(true)
+                    .maxAge(3600);
+        }
     }
-}
+
+

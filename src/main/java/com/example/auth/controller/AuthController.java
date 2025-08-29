@@ -45,57 +45,40 @@ public class AuthController {
     @Autowired
     private GoogleAuthService googleAuthService;
 
-    
+
     @PostMapping("/google")
-    public ResponseEntity<AuthResponse> authenticateWithGoogle(@Valid @RequestBody GoogleAuthRequest request) {
+    public ResponseEntity<AuthResponse> authenticateWithGoogle(
+            @Valid @RequestBody GoogleAuthRequest request,
+            HttpServletRequest httpReq // <-- importante
+    ) {
         try {
-            logger.info("Recibida solicitud de autenticación con Google (código de autorización)");
-
-            // Define the redirect URI used in the frontend for the authorization code flow
-            // This MUST match the Authorized Redirect URI configured in Google Cloud Console
-            String redirectUri = "http://localhost:8080/api/auth/google/callback";
-
-            // Exchange authorization code for tokens
+            String redirectUri = "http://localhost:8080/api/auth/google/callback"; // o el de prod
             TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(request.getCode(), redirectUri);
 
             String idTokenString = tokenResponse.get("id_token").toString();
-            String accessToken = tokenResponse.getAccessToken();
-            String refreshToken = tokenResponse.getRefreshToken();
+            String accessToken   = tokenResponse.getAccessToken();
+            String refreshToken  = tokenResponse.getRefreshToken();
 
             User user = googleAuthService.authenticateUser(idTokenString, accessToken, refreshToken);
-
-            if (user != null) {
-                AuthResponse response = new AuthResponse(
-                    true,
-                    "Autenticación exitosa",
-                    user // Return user data to frontend
-                );
-
-                logger.info("Autenticación exitosa para usuario: " + user.getEmail());
-                return ResponseEntity.ok(response);
-
-            } else {
-                AuthResponse response = new AuthResponse(
-                    false,
-                    "Código de autorización inválido o fallo en la verificación del ID Token"
-                );
-
-                logger.warning("Intento de autenticación fallido - Código inválido o ID Token no verificado");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new AuthResponse(false, "Código inválido o ID token no verificado"));
             }
 
+            HttpSession session = httpReq.getSession(true); // <-- crea sesión
+            session.setAttribute("user", user);
+            session.setAttribute("accessToken", accessToken);
+            session.setAttribute("refreshToken", refreshToken);
+            System.out.println("SESSION CREATED in POST, id=" + session.getId()); // log
+
+            return ResponseEntity.ok(new AuthResponse(true, "Autenticación exitosa", user));
         } catch (Exception e) {
-            logger.severe("Error en autenticación: " + e.getMessage());
             e.printStackTrace();
-
-            AuthResponse response = new AuthResponse(
-                false,
-                "Error interno del servidor durante la autenticación"
-            );
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new AuthResponse(false, "Error interno durante la autenticación"));
         }
     }
+
 
     
     @GetMapping("/status")
@@ -103,9 +86,9 @@ public class AuthController {
         return ResponseEntity.ok("API de autenticación funcionando correctamente");
     }
 
-    
+
     @GetMapping("/google/callback")
-    public ResponseEntity<String> handleGoogleCallback(@RequestParam("code") String code, 
+    public ResponseEntity<String> handleGoogleCallback(@RequestParam("code") String code,
                                                       @RequestParam(value = "error", required = false) String error,
                                                       @RequestParam(value = "state", required = false) String state,
                                                       HttpServletResponse response,
@@ -117,18 +100,18 @@ public class AuthController {
 
         try {
             logger.info("Callback recibido - Procesando autenticación");
-            
+
             // Procesar autenticación
             String redirectUri = "http://localhost:8080/api/auth/google/callback";
             logger.info("Usando redirect_uri: " + redirectUri);
             TokenResponse tokenResponse = googleAuthService.exchangeCodeForTokens(code, redirectUri);
-            
+
             String idTokenString = tokenResponse.get("id_token").toString();
             String accessToken = tokenResponse.getAccessToken();
             String refreshToken = tokenResponse.getRefreshToken();
-            
+
             User user = googleAuthService.authenticateUser(idTokenString, accessToken, refreshToken);
-            
+
             if (user != null) {
                 // Guardamos el usuario en sesion
                 session.setAttribute("user", user);
@@ -136,7 +119,7 @@ public class AuthController {
                 session.setAttribute("refreshToken", refreshToken);
 
                 logger.info("Autenticación exitosa para usuario: " + user.getEmail());
-                
+
                 // Pasar datos del usuario en la URL
                // String userParams = "?auth=success" +
                     //"&user_id=" + java.net.URLEncoder.encode(user.getId(), java.nio.charset.StandardCharsets.UTF_8) +
@@ -144,31 +127,31 @@ public class AuthController {
                     //"&user_name=" + java.net.URLEncoder.encode(user.getName(), java.nio.charset.StandardCharsets.UTF_8) +
                     //"&user_picture=" + java.net.URLEncoder.encode(user.getPicture(), java.nio.charset.StandardCharsets.UTF_8) +
                     //"&email_verified=" + user.isEmailVerified();
-                
+
                 //logger.info("Redirigiendo con datos del usuario en URL");
-                
+
                 // Redirección al frontend con datos del usuario
                 return ResponseEntity.status(HttpStatus.FOUND)
                   //  .header("Location", "https://test-api-google.netlify.app/home" + userParams)
-                        .header("Location", "http://localhost:4200/dashboard?auth=success")
+                        .header("Location", "https://test-api-google.netlify.app/dashboard?auth=success")
                     .build();
-                
+
             } else {
                 logger.warning("Fallo en la verificación del ID Token");
-                
+
                 // Redirección al frontend con error
                 return ResponseEntity.status(HttpStatus.FOUND)
-                    .header("Location", "http://localhost:4200/dashboard?auth=error&message=token_verification_failed")
+                    .header("Location", "https://test-api-google.netlify.app/dashboard?auth=error&message=token_verification_failed")
                     .build();
             }
-            
-            
+
+
         } catch (Exception e) {
             logger.severe("Error en callback: " + e.getMessage());
             e.printStackTrace();
-            
+
             String errorType = "server_error";
-            
+
             // Diagnóstico de errores
             if (e.getMessage().contains("401")) {
                 errorType = "client_secret_error";
@@ -177,10 +160,10 @@ public class AuthController {
                 errorType = "redirect_uri_error";
                 logger.severe("Posible problema: redirect_uri no autorizado en Google Console");
             }
-            
+
             // Redirección al frontend con error
             return ResponseEntity.status(HttpStatus.FOUND)
-                .header("Location", "http://localhost:4200/dashboard?auth=error&type=" + errorType)
+                .header("Location", "https://test-api-google.netlify.app/dashboard?auth=error&type=" + errorType)
                 .build();
         }
     }
@@ -205,15 +188,20 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<Object> getCurrentUser(HttpServletRequest request) {
         HttpSession session = request.getSession(false); // NO crea
+
         if (session == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new Object(){ public final boolean success=false; public final String message="No hay sesion activa";});
         }
+
         User user = (User) session.getAttribute("user");
+
+
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new Object(){ public final boolean success=false; public final String message="No hay sesion activa";});
+                    .body(new Object(){ public final boolean success=false; public final String message="No hay usuario en la sesion";});
         }
+
         final User u = user;
         return ResponseEntity.ok(new Object(){
             public final boolean success=true;
